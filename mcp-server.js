@@ -53,6 +53,25 @@ const tools = [
     }
   },
   {
+    name: 'mcp_human_describe',
+    description: 'Interpretar atributos humanos explícitos escritos en español sin inferir datos invisibles.',
+    inputSchema: { type: 'object',required: ['description'],properties: {
+      description: {type:'string',minLength:1,maxLength:1800}
+    }}
+  },
+  {
+    name: 'mcp_human_create',
+    description: 'Crear base humana o ángel 3D estilizado con cabello, ojos, piel, complexión y proporciones.',
+    inputSchema: {type:'object',required:['spec'],properties:{spec:{type:'object'}}}
+  },
+  {
+    name: 'mcp_human_update',
+    description: 'Ajustar la apariencia de una figura humana paramétrica ya creada, identificable por UUID.',
+    inputSchema:{type:'object',required:['spec'],properties:{
+      spec:{type:'object'},uuid:{type:'string'}
+    }}
+  },
+  {
     name: 'mcp_asset_preset',
     description: 'Crear una plantilla web abierta en ausencia de un plano detallado.',
     inputSchema: {
@@ -286,6 +305,13 @@ async function handle(request) {
     if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Argumentos inválidos.');
     if (name === 'mcp_spawn_pbr_mesh' && args.type && !['box', 'sphere', 'cylinder', 'torusknot'].includes(args.type))
       throw new Error('Geometría no permitida.');
+    if (name === 'mcp_human_describe' && (typeof args.description !== 'string' ||
+        !args.description.trim() || args.description.length > 1800))
+      throw new Error('Descripción humana inválida.');
+    if (['mcp_human_create','mcp_human_update'].includes(name) &&
+        (!args.spec || typeof args.spec !== 'object' || Array.isArray(args.spec) ||
+         JSON.stringify(args.spec).length > 8192))
+      throw new Error('Ficha humana inválida o excesivamente grande.');
     if (name === 'mcp_asset_preset' && !['anthro-cat','dragon','robot','tree','chair','vehicle','castle'].includes(args.id))
       throw new Error('Plantilla de figura desconocida.');
     if (name === 'mcp_asset_validate' || name === 'mcp_asset_build') {
