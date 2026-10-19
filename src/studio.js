@@ -19,7 +19,7 @@ import * as THREE from 'three';
         this.aiActionHistory = [];
         this.characterWorkflow = new CharacterWorkflow(this);
         this.animationEditor = new AnimationEditor(this);
-        this.qualityProfile = typeof navigator !== 'undefined' && (navigator.deviceMemory <= 4 || navigator.hardwareConcurrency <= 4) ? 'low' : 'balanced';
+        this.qualityProfile = 'low'; // Iniciar siempre en modo económico; el usuario puede aumentar la calidad.
         this.lastRenderAt = 0;
 
         this.initEngine();
@@ -150,7 +150,7 @@ import * as THREE from 'three';
         floor.name = 'Studio_Floor';
         this.registerMesh(floor, false);
 
-        this.addHyperRealisticAssembly();
+        // Escena inicial vacía y ligera: objetos PBR opcionales desde la barra de herramientas.
       }
 
       registerMesh(mesh, select = true) {
