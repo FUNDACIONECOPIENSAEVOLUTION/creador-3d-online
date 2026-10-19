@@ -12,6 +12,8 @@ import * as THREE from 'three';
     import { runFreeCommand } from './free-command-assistant.js';
     import { buildAssetBlueprint, validateAssetBlueprint } from './asset-blueprint.js';
     import { makePresetBlueprint, matchPreset } from './asset-presets.js';
+    import { normalizeCharacterSpec, interpretCharacterDescription } from './character-spec.js';
+    import { applyCharacterAppearance } from './character-appearance.js';
 
     class Creador3DOnlineStudio {
       constructor() {
@@ -602,10 +604,34 @@ import * as THREE from 'three';
         catch (error) { this.setStatus('Descripción: ' + error.message); return {error:error.message}; }
       }
 
+      createHumanFromSpec(raw) {
+        const spec = normalizeCharacterSpec(raw);
+        const {object} = createFreeCharacter({
+          type: spec.kind, detail: this.qualityProfile === 'low' ? 'low' : 'balanced'
+        });
+        const appearance = applyCharacterAppearance(object,spec);
+        object.position.x = this.objects.filter(o=>o.userData?.neoFreeCharacter).length * 2.4;
+        this.registerMesh(object,true);
+        this.characterWorkflow.ensureModel(object);
+        this.logAIAction('EcoBlend humano generado desde ficha: '+object.name);
+        this.setStatus('Base 3D estilizada creada con ojos, cabello, piel y complexión indicados. No es hiperrealismo automático.');
+        return {name:object.name,uuid:object.uuid,spec:appearance.spec,quality:appearance.quality};
+      }
+
+      updateHumanFromSpec(raw,uuid) {
+        let target = this.selectedObject;
+        if(uuid)target=this.animationEditor.resolve(uuid);
+        const root=this.animationEditor.rootFor(target);
+        return applyCharacterAppearance(root,raw);
+      }
+
       buildAssetFromDescription(description) {
         const id = matchPreset(description);
-        if (!id) throw new Error('La descripción requiere que una IA proponga un plano de piezas, o construirlo manualmente. Ejemplos disponibles: gato antropomorfo, dragón, robot, silla, árbol, vehículo, torre.');
-        return this.buildUniversalAsset(makePresetBlueprint(id));
+        if (id) return this.buildUniversalAsset(makePresetBlueprint(id));
+        if (/\b(hombre|mujer|persona|humano|humana|angel|guardian)\b/i.test(
+          description.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        )) return this.createHumanFromSpec(interpretCharacterDescription(description).spec);
+        throw new Error('La descripción requiere una IA con visión que genere un plano de partes. Las plantillas gratuitas actuales son humanoide, ángel, gato antropomorfo, dragón, robot, silla, árbol, vehículo y torre.');
       }
 
       submitFreeCommand() {
@@ -780,6 +806,9 @@ import * as THREE from 'three';
               { name: 'mcp_asset_validate', description: 'Validar JSON universal de figura, piezas y materiales.' },
               { name: 'mcp_asset_build', description: 'Construir figura desde un plano 3D autorizado y validado.' },
               { name: 'mcp_asset_preset', description: 'Crear una plantilla abierta de criatura, objeto o escenario.' },
+              { name: 'mcp_human_describe', description: 'Convertir atributos escritos de un humanoide en una ficha verificable.' },
+              { name: 'mcp_human_create', description: 'Crear y personalizar base humana estilizada desde ficha validada.' },
+              { name: 'mcp_human_update', description: 'Ajustar color de ojos, cabello, piel y proporciones de una base EcoBlend.' },
               { name: 'mcp_set_quality', description: 'Cambiar perfil ligero, equilibrado o visual.' },
               { name: 'mcp_animation_pivot', description: 'Crear articulación en una extremidad de malla separada.' }
             ];
@@ -904,6 +933,9 @@ import * as THREE from 'three';
               }
               else if (method === 'mcp_asset_build') result = self.buildUniversalAsset(params.blueprint);
               else if (method === 'mcp_asset_preset') result = self.buildUniversalAsset(makePresetBlueprint(params.id));
+              else if (method === 'mcp_human_describe') result = interpretCharacterDescription(params.description);
+              else if (method === 'mcp_human_create') result = self.createHumanFromSpec(params.spec);
+              else if (method === 'mcp_human_update') result = self.updateHumanFromSpec(params.spec,params.uuid);
               else if (method === 'mcp_animation_inspect') result = self.animationEditor.inspect();
               else if (method === 'mcp_animation_create') result = self.animationEditor.createAction(
                 params.name, params.duration,
