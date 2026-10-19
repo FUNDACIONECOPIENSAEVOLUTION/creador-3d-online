@@ -583,8 +583,7 @@ import * as THREE from 'three';
               { name: 'mcp_spawn_pbr_mesh', description: 'Crea una nueva malla 3D con shader físico MeshPhysicalMaterial.' },
               { name: 'mcp_modify_object', description: 'Modifica posición, escala o material de un objeto existente.' },
               { name: 'mcp_get_creation_brief', description: 'Lee el encargo de creación de personaje y los requisitos.' },
-              { name: 'mcp_get_reference_image', description: 'Obtiene la imagen de referencia en JPEG para análisis visual.' },
-              { name: 'mcp_execute_three_code', description: 'Bloqueada por seguridad en la versión 1.2.' }
+              { name: 'mcp_get_reference_image', description: 'Obtiene la imagen de referencia en JPEG para análisis visual.' }
             ];
           },
           getSceneGraph() {
@@ -598,43 +597,52 @@ import * as THREE from 'three';
             return { mimeType: 'image/png', mode: 'single', dataUrl };
           },
           captureQuadView() {
-            const origPos = self.camera.position.clone();
-            const origTarget = self.orbit.target.clone();
-            const views = [
-              { label: 'PERSPECTIVA', pos: origPos.clone() },
-              { label: 'FRONTAL (Z+)', pos: new THREE.Vector3(0, 1.5, 7) },
-              { label: 'SUPERIOR (Y+)', pos: new THREE.Vector3(0, 8, 0.01) },
-              { label: 'LATERAL (X+)', pos: new THREE.Vector3(7, 1.5, 0) }
-            ];
-
             const quadCanvas = document.createElement('canvas');
             quadCanvas.width = 800;
             quadCanvas.height = 600;
             const ctx = quadCanvas.getContext('2d');
-
-            views.forEach((v, idx) => {
-              self.camera.position.copy(v.pos);
-              self.camera.lookAt(0, 1.0, 0);
-              self.renderer.render(self.scene, self.camera);
-
-              const x = (idx % 2) * 400;
-              const y = Math.floor(idx / 2) * 300;
+            const bounds = new THREE.Box3();
+            self.objects.filter(o => o.name !== 'Studio_Floor').forEach(o => bounds.expandByObject(o));
+            const center = bounds.isEmpty() ? new THREE.Vector3(0, 1, 0) : bounds.getCenter(new THREE.Vector3());
+            const size = bounds.isEmpty() ? 3 : Math.max(3, ...bounds.getSize(new THREE.Vector3()).toArray());
+            const halfWidth = size * 0.8;
+            const halfHeight = size * 0.6;
+            const views = [
+              { label: 'PERSPECTIVA', camera: self.camera },
+              { label: 'FRONTAL (Z+)', pos: center.clone().add(new THREE.Vector3(0, 0, 10)) },
+              { label: 'SUPERIOR (Y+)', pos: center.clone().add(new THREE.Vector3(0, 10, 0.001)) },
+              { label: 'LATERAL (X+)', pos: center.clone().add(new THREE.Vector3(10, 0, 0)) }
+            ];
+            for (let i = 0; i < views.length; i++) {
+              const view = views[i];
+              let activeCamera = view.camera;
+              if (!activeCamera) {
+                activeCamera = new THREE.OrthographicCamera(-halfWidth, halfWidth, halfHeight, -halfHeight, 0.01, 1000);
+                activeCamera.position.copy(view.pos);
+                activeCamera.lookAt(center);
+                activeCamera.updateProjectionMatrix();
+              }
+              self.renderer.render(self.scene, activeCamera);
+              const x = (i % 2) * 400, y = Math.floor(i / 2) * 300;
               ctx.drawImage(self.renderer.domElement, x, y, 400, 300);
               ctx.fillStyle = 'rgba(0,0,0,0.65)';
-              ctx.fillRect(x + 6, y + 6, 120, 20);
+              ctx.fillRect(x + 6, y + 6, 130, 20);
               ctx.fillStyle = '#10b981';
               ctx.font = 'bold 11px sans-serif';
-              ctx.fillText(v.label, x + 12, y + 20);
-            });
-
-            self.camera.position.copy(origPos);
-            self.orbit.target.copy(origTarget);
-            self.camera.lookAt(origTarget);
+              ctx.fillText(view.label, x + 12, y + 20);
+            }
+            // No se mueve la cámara interactiva: OrbitControls mantiene su estado.
             self.renderer.render(self.scene, self.camera);
-
             const dataUrl = quadCanvas.toDataURL('image/png');
             const box = document.getElementById('vision-box');
-            box.innerHTML = `<img src="${dataUrl}" alt="Quad Vision" /><span class="vision-label">4-Vistas IA</span>`;
+            box.replaceChildren();
+            const preview = document.createElement('img');
+            preview.src = dataUrl;
+            preview.alt = '4 vistas del modelo';
+            const label = document.createElement('span');
+            label.className = 'vision-label';
+            label.textContent = '4 Vistas IA';
+            box.append(preview, label);
             return { mimeType: 'image/png', mode: 'quad_orthographic', dataUrl };
           },
           modifyObject(params = {}) {
