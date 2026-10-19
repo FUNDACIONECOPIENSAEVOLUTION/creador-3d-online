@@ -123,3 +123,13 @@ Cuando un usuario pida a una IA *"Crea un modelo 3D hiperrealista de X"*:
 **Política tecnológica:** no añadir dependencias a Tripo, Hunyuan3D, Meshy ni APIs de generación con costes; usar herramientas propias, open source y assets con licencias documentadas. Un servidor gratuito no equivale a capacidad infinita de render en nube.
 
 **Pruebas:** CI pasa las verificaciones de interpolación y exportación GLB; la fluidez y diseño en teléfonos reales precisan validación manual. El plan de autorrig por pesos queda pendiente.
+
+---
+
+## 9. Asistente guiado local y licencia de código abierto
+
+La versión 1.3 agrega `src/free-command-assistant.js`: instrucciones limitadas en español traducidas a operaciones ya implementadas (crear humanoide/ángel, modo ligero, presets rígidos, exportación). **Es un parser determinista, NO un LLM**, funciona sin servicios web adicionales y no inventa geometría por generación estadística.
+
+El proyecto incluye `LICENSE` MIT para permitir reutilización del código; mantener créditos, respetar licencias separadas de assets importados y de librerías de terceros. La generación de figuras humanoides paramétricas procede de código propio y puede trabajar sin ninguna descarga adicional de modelos 3D.
+
+**Verificación exigida antes de publicar:** comprobar CI con pruebas de lenguaje natural, test de geometría procedural/GLB y navegador real. Ninguna prueba sintáctica garantiza calidad visual hiperrealista.
