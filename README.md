@@ -175,3 +175,9 @@ La interfaz ya ofrece:
 **Guía técnica:** [IA_IMAGEN_A_3D_ECOBLEND.md](docs/IA_IMAGEN_A_3D_ECOBLEND.md). MPFB2 permanece como posibilidad futura opcional para bases humanas; no es necesario para generar criaturas u objetos.
 
 Sin Tripo, Hunyuan, Meshy ni suscripciones obligatorias; software MIT con herramientas web gratuitas. El rendimiento y el nivel de detalle tienen límites reales en equipos modestos. El hiperrealismo auténtico, la reconstrucción exacta desde una foto y la deformación automática de mallas orgánicas siguen en desarrollo.
+
+### Descripción especializada de personas en EcoBlend
+
+En el mismo campo de descripción también puedes escribir `mujer de ojos verdes, acuerpada, cabello negro largo y piel canela`. EcoBlend reconoce los atributos explícitos y crea una base humanoide con cambios visibles de color de ojos, cabello, piel y proporciones simples. El formato de ficha está en `src/character-spec.js` y la aplicación de rasgos en `src/character-appearance.js`. Estos cambios **son estilizados**, no un resultado humano hiperrealista ni ejecución real de MPFB2 en el navegador.
+
+Un agente autorizado puede acceder a `mcp_human_describe`, `mcp_human_create` y `mcp_human_update`. El motor general `mcp_asset_build` sigue siendo el camino para cualquier otro tipo de figura.
