@@ -1023,6 +1023,66 @@ import * as THREE from 'three';
         }
       }
 
+
+      async copyRemoteRoom(){
+        if(!this.remoteRoomId)return this.setStatus('Conecta primero EcoBlend MCP Nube.');
+        try {await navigator.clipboard.writeText(this.remoteRoomId);this.setStatus('Sala copiada. Compártela solo con tu IA.');}
+        catch {this.setStatus('Copia manualmente el ID de sala.');}
+      }
+
+      connectRemoteMCP(){
+        const status=document.getElementById('remote-state');
+        try{
+          if(this.remoteSocket)this.remoteSocket.close();
+          const addr=new URL(document.getElementById('remote-mcp-base').value.trim());
+          if(addr.protocol!=='https:'||addr.username||addr.password||addr.search||addr.hash)throw Error('Introduce una dirección base HTTPS confiable, sin parámetros.');
+          const room=crypto.randomUUID();
+          const endpoint=new URL('/ws',addr.origin);endpoint.protocol='wss:';endpoint.searchParams.set('room',room);
+          const socket=new WebSocket(endpoint);
+          this.remoteSocket=socket;this.remoteRoomId=null;
+          status.textContent='Conectando…';
+          socket.onmessage=event=>{
+            let packet;
+            try{packet=JSON.parse(event.data);}catch{return;}
+            if(packet.type==='ready'){
+              this.remoteRoomId=room;
+              document.getElementById('remote-room').textContent=room;
+              status.textContent='Conectado (20 minutos)';
+              this.setStatus('EcoBlend nube conectado. Cada operación requerirá tu aprobación.');
+              return;
+            }
+            if(packet.type!=='request'||typeof packet.requestId!=='string')return;
+            const readable=['mcp_get_reference_image','mcp_capture_quad_view'].includes(packet.method);
+            const writes=['mcp_asset_build','mcp_asset_preset','mcp_animation_preset'].includes(packet.method);
+            const action=readable?'Compartir imagen':writes?'Modificar escena':'Consultar escena';
+            const approved=window.confirm('EcoBlend MCP Nube\n'+action+': '+String(packet.tool||packet.method).slice(0,80)+'\n\n¿Autorizas esta operación?');
+            let result;
+            if(!approved)result={type:'response',requestId:packet.requestId,error:'El usuario rechazó la operación.'};
+            else{
+              try{
+                const data=window.MCP_BRIDGE.handleJsonRpc({jsonrpc:'2.0',id:packet.requestId,method:packet.method,params:packet.params||{}});
+                result=data.error?{type:'response',requestId:packet.requestId,error:data.error.message}:{type:'response',requestId:packet.requestId,result:data.result};
+              }catch(error){result={type:'response',requestId:packet.requestId,error:String(error.message).slice(0,200)};}
+            }
+            if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(result));
+          };
+          socket.onerror=()=>{status.textContent='Error de conexión';};
+          socket.onclose=()=>{
+            if(this.remoteSocket!==socket)return;
+            this.remoteRoomId=null;
+            document.getElementById('remote-room').textContent='—';
+            status.textContent='Desconectado o caducado';
+          };
+        }catch(error){status.textContent='Sin conexión';this.setStatus('MCP Nube: '+error.message);}
+      }
+
+      disconnectRemoteMCP(){
+        if(this.remoteSocket)this.remoteSocket.close();
+        this.remoteSocket=null;this.remoteRoomId=null;
+        document.getElementById('remote-room').textContent='—';
+        document.getElementById('remote-state').textContent='Desconectado';
+      }
+
       connectMCPSocket() {
         const url = document.getElementById('ws-url').value;
         try {
