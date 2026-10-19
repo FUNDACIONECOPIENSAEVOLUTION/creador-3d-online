@@ -1,160 +1,194 @@
 #!/usr/bin/env node
+'use strict';
+
 /**
- * Servidor Puente MCP para Creador 3D Online
- * Repositorio: https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online
+ * NeoBlender MCP local bridge v1.2
  *
- * Conecta agentes MCP locales (Claude Desktop, Cursor, Windsurf, Cline) via stdio
- * con la pestaña abierta del navegador en ws://localhost:8765.
+ * stdio: MCP JSON-RPC (one JSON payload per line)
+ * WebSocket: browser transport bound ONLY to 127.0.0.1.
+ * Restrict Origin to the official GitHub Pages editor or localhost development.
+ * No eval/new Function commands are exposed.
+ *
+ * Usage: npm install && npm run start-mcp
  */
-
+const readline = require('node:readline');
 const { WebSocketServer } = require('ws');
-const readline = require('readline');
 
-const WS_PORT = process.env.MCP_WS_PORT || 8765;
-const wss = new WebSocketServer({ port: WS_PORT });
+const HOST = '127.0.0.1';
+const PORT = Number(process.env.MCP_WS_PORT || 8765);
+const ALLOWED_ORIGINS = new Set([
+  'https://fundacionecopiensaevolution.github.io',
+  'http://localhost:5173', 'http://127.0.0.1:5173',
+  'http://localhost:8000', 'http://127.0.0.1:8000'
+]);
+const MAX_MESSAGE = 12 * 1024 * 1024;
 
-let activeBrowserSocket = null;
-const pendingRequests = new Map();
+if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
+  process.stderr.write('[NeoBlender] Puerto MCP_WS_PORT inválido.\n');
+  process.exit(1);
+}
 
-wss.on('connection', (ws) => {
-  activeBrowserSocket = ws;
-  process.stderr.write(`[MCP-3D-Bridge] Navegador conectado en ws://localhost:${WS_PORT}\n`);
-
-  ws.on('message', (data) => {
-    try {
-      const response = JSON.parse(data.toString());
-      if (response.id && pendingRequests.has(response.id)) {
-        const resolve = pendingRequests.get(response.id);
-        pendingRequests.delete(response.id);
-        resolve(response);
+const tools = [
+  { name: 'mcp_get_scene_graph', description: 'Inspeccionar mallas, huesos, transformaciones y materiales de la escena.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'mcp_capture_viewport', description: 'Capturar vista actual (PNG).', inputSchema: { type: 'object', properties: {} } },
+  { name: 'mcp_capture_quad_view', description: 'Capturar cuatro vistas de la escena (PNG).', inputSchema: { type: 'object', properties: {} } },
+  { name: 'mcp_get_creation_brief', description: 'Obtener prompt, destino y requisitos del personaje solicitados en la web.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'mcp_get_reference_image', description: 'Recibir imagen de referencia previamente cargada por el usuario (JPEG).', inputSchema: { type: 'object', properties: {} } },
+  {
+    name: 'mcp_spawn_pbr_mesh',
+    description: 'Crear primitiva geométrica con material PBR. No crea automáticamente humanos realistas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['box', 'sphere', 'cylinder', 'torusknot'] },
+        name: { type: 'string', maxLength: 100 },
+        color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
+        metalness: { type: 'number', minimum: 0, maximum: 1 },
+        roughness: { type: 'number', minimum: 0, maximum: 1 },
+        clearcoat: { type: 'number', minimum: 0, maximum: 1 },
+        x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }
       }
-    } catch (err) {
-      process.stderr.write(`[MCP-3D-Bridge] Error parseando mensaje del navegador: ${err.message}\n`);
+    }
+  },
+  {
+    name: 'mcp_modify_object',
+    description: 'Ajustar un objeto autorizado por nombre o UUID, sin ejecutar JavaScript arbitrario.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' }, uuid: { type: 'string' },
+        position: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+        scale: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+        color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
+        metalness: { type: 'number', minimum: 0, maximum: 1 },
+        roughness: { type: 'number', minimum: 0, maximum: 1 },
+        transmission: { type: 'number', minimum: 0, maximum: 1 }
+      }
+    }
+  }
+];
+
+const toolNames = new Set(tools.map(t => t.name));
+const pending = new Map();
+let browser = null;
+let requestCounter = 0;
+const wss = new WebSocketServer({
+  host: HOST, port: PORT, maxPayload: MAX_MESSAGE,
+  verifyClient: (info, done) => {
+    const accepted = ALLOWED_ORIGINS.has(info.origin);
+    if (!accepted) process.stderr.write('[NeoBlender] WebSocket Origin no autorizado: ' + String(info.origin) + '\n');
+    done(accepted, accepted ? 200 : 403, accepted ? 'OK' : 'Origen no autorizado');
+  }
+});
+
+wss.on('listening', () => process.stderr.write('[NeoBlender] WebSocket local escuchando en ws://' + HOST + ':' + PORT + '\n'));
+wss.on('error', error => process.stderr.write('[NeoBlender] WS error: ' + error.message + '\n'));
+
+function abortPending(reason) {
+  for (const [, operation] of pending) {
+    clearTimeout(operation.timer);
+    operation.reject(new Error(reason));
+  }
+  pending.clear();
+}
+
+wss.on('connection', socket => {
+  if (browser && browser.readyState === 1) {
+    socket.close(1008, 'Solo se admite una pestaña conectada');
+    return;
+  }
+  browser = socket;
+  process.stderr.write('[NeoBlender] Visor conectado\n');
+  socket.on('message', message => {
+    try {
+      const response = JSON.parse(message.toString());
+      if (typeof response.id !== 'number' || !pending.has(response.id)) return;
+      const op = pending.get(response.id);
+      pending.delete(response.id);
+      clearTimeout(op.timer);
+      op.resolve(response);
+    } catch (error) {
+      process.stderr.write('[NeoBlender] Respuesta WS inválida: ' + error.message + '\n');
     }
   });
-
-  ws.on('close', () => {
-    if (activeBrowserSocket === ws) activeBrowserSocket = null;
-    process.stderr.write('[MCP-3D-Bridge] Navegador desconectado.\n');
+  socket.on('close', () => {
+    if (browser !== socket) return;
+    browser = null;
+    abortPending('El visor web se ha desconectado.');
   });
 });
 
-function forwardToBrowser(method, params = {}) {
+async function forward(method, args) {
+  if (!browser || browser.readyState !== 1) throw new Error('Abre el editor web y pulsa Conectar WS.');
+  const id = ++requestCounter;
   return new Promise((resolve, reject) => {
-    if (!activeBrowserSocket || activeBrowserSocket.readyState !== 1) {
-      return reject(new Error('No hay ninguna pestaña de Creador 3D Online conectada a ws://localhost:' + WS_PORT));
-    }
-    const id = Date.now() + Math.floor(Math.random() * 1000);
-    pendingRequests.set(id, resolve);
-    activeBrowserSocket.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-
-    setTimeout(() => {
-      if (pendingRequests.has(id)) {
-        pendingRequests.delete(id);
-        reject(new Error('Timeout esperando respuesta del motor 3D en el navegador.'));
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error('Tiempo de espera agotado: la pestaña no respondió.'));
+    }, 20000);
+    pending.set(id, { resolve, reject, timer });
+    browser.send(JSON.stringify({ jsonrpc: '2.0', id, method, params: args }), error => {
+      if (error && pending.has(id)) {
+        const op = pending.get(id);
+        pending.delete(id);
+        clearTimeout(op.timer);
+        reject(error);
       }
-    }, 10000);
+    });
   });
 }
 
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
+function reply(id, result, error) {
+  const envelope = { jsonrpc: '2.0', id };
+  if (error) envelope.error = { code: -32000, message: String(error.message || error) };
+  else envelope.result = result;
+  process.stdout.write(JSON.stringify(envelope) + '\n');
+}
 
-rl.on('line', async (line) => {
-  if (!line.trim()) return;
+async function handle(request) {
+  if (!request || request.jsonrpc !== '2.0') return;
+  if (request.id === undefined) return; // Las notificaciones no llevan respuesta.
+  const method = request.method;
   try {
-    const req = JSON.parse(line);
-
-    if (req.method === 'initialize') {
-      process.stdout.write(JSON.stringify({
-        jsonrpc: '2.0',
-        id: req.id,
-        result: {
-          protocolVersion: '2024-11-05',
-          capabilities: { tools: {} },
-          serverInfo: { name: 'creador-3d-online-mcp', version: '1.1.0' }
-        }
-      }) + '\n');
+    if (method === 'initialize') {
+      reply(request.id, {
+        protocolVersion: '2024-11-05',
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: 'creador-3d-online-mcp', version: '1.2.0' }
+      }); return;
+    }
+    if (method === 'ping') { reply(request.id, {}); return; }
+    if (method === 'tools/list') { reply(request.id, { tools }); return; }
+    if (method !== 'tools/call') throw new Error('Método no permitido.');
+    const name = request.params?.name;
+    const args = request.params?.arguments || {};
+    if (!toolNames.has(name)) throw new Error('Herramienta no autorizada: ' + String(name));
+    if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Argumentos inválidos.');
+    if (name === 'mcp_spawn_pbr_mesh' && args.type && !['box', 'sphere', 'cylinder', 'torusknot'].includes(args.type))
+      throw new Error('Geometría no permitida.');
+    const response = await forward(name, args);
+    if (response.error) {
+      reply(request.id, { content: [{ type: 'text', text: response.error.message }], isError: true });
       return;
     }
-
-    if (req.method === 'tools/list') {
-      process.stdout.write(JSON.stringify({
-        jsonrpc: '2.0',
-        id: req.id,
-        result: {
-          tools: [
-            {
-              name: 'mcp_get_scene_graph',
-              description: 'Obtiene todos los objetos 3D, transformaciones y materiales PBR de la escena actual.',
-              inputSchema: { type: 'object', properties: {} }
-            },
-            {
-              name: 'mcp_capture_quad_view',
-              description: 'Captura 4 vistas (Perspectiva, Frontal, Superior, Lateral) del modelo 3D en Base64 PNG para que la IA vea la geometría.',
-              inputSchema: { type: 'object', properties: {} }
-            },
-            {
-              name: 'mcp_spawn_pbr_mesh',
-              description: 'Crea un objeto 3D hiperrealista con MeshPhysicalMaterial.',
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  type: { type: 'string', enum: ['sphere', 'box', 'cylinder', 'torusknot'] },
-                  name: { type: 'string' },
-                  color: { type: 'string' },
-                  metalness: { type: 'number' },
-                  roughness: { type: 'number' },
-                  clearcoat: { type: 'number' },
-                  transmission: { type: 'number' },
-                  ior: { type: 'number' },
-                  x: { type: 'number' },
-                  y: { type: 'number' },
-                  z: { type: 'number' }
-                }
-              }
-            },
-            {
-              name: 'mcp_execute_three_code',
-              description: 'Ejecuta código Three.js directo en la escena (recibe THREE, scene, app).',
-              inputSchema: {
-                type: 'object',
-                properties: { code: { type: 'string' } },
-                required: ['code']
-              }
-            }
-          ]
-        }
-      }) + '\n');
-      return;
+    const value = response.result;
+    if (name === 'mcp_capture_viewport' || name === 'mcp_capture_quad_view' || name === 'mcp_get_reference_image') {
+      const mimeType = value?.mimeType;
+      if (!['image/png', 'image/jpeg'].includes(mimeType)) throw new Error('Imagen de respuesta no válida.');
+      const prefix = 'data:' + mimeType + ';base64,';
+      if (typeof value.dataUrl !== 'string' || !value.dataUrl.startsWith(prefix))
+        throw new Error('Datos de imagen mal formados.');
+      reply(request.id, { content: [{ type: 'image', mimeType, data: value.dataUrl.slice(prefix.length) }] });
+    } else {
+      reply(request.id, { content: [{ type: 'text', text: JSON.stringify(value) }] });
     }
-
-    if (req.method === 'tools/call') {
-      const toolName = req.params.name;
-      const toolArgs = req.params.arguments || {};
-      const browserRes = await forwardToBrowser(toolName, toolArgs);
-
-      if (browserRes.error) {
-        process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: req.id, error: browserRes.error }) + '\n');
-      } else if (toolName === 'mcp_capture_quad_view' || toolName === 'mcp_capture_viewport') {
-        const base64Data = browserRes.result.dataUrl.replace(/^data:image\/png;base64,/, '');
-        process.stdout.write(JSON.stringify({
-          jsonrpc: '2.0',
-          id: req.id,
-          result: {
-            content: [{ type: 'image', data: base64Data, mimeType: 'image/png' }]
-          }
-        }) + '\n');
-      } else {
-        process.stdout.write(JSON.stringify({
-          jsonrpc: '2.0',
-          id: req.id,
-          result: {
-            content: [{ type: 'text', text: JSON.stringify(browserRes.result, null, 2) }]
-          }
-        }) + '\n');
-      }
-    }
-  } catch (err) {
-    process.stderr.write(`[MCP-3D-Bridge] Error: ${err.message}\n`);
+  } catch (error) {
+    reply(request.id, { isError: true, content: [{ type: 'text', text: String(error.message || error) }] });
   }
+}
+
+readline.createInterface({ input: process.stdin, crlfDelay: Infinity }).on('line', line => {
+  if (!line.trim() || line.length > 256 * 1024) return;
+  try { void handle(JSON.parse(line)); }
+  catch (error) { process.stderr.write('[NeoBlender] JSON stdio inválido: ' + error.message + '\n'); }
 });

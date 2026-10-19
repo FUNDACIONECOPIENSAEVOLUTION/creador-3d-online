@@ -1,16 +1,19 @@
 {
   "name": "creador-3d-online",
-  "version": "1.1.0",
-  "description": "Estudio de modelado 3D hiperrealista PBR en navegador con puente de visi\u00f3n y control MCP para IAs.",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Editor de personajes GLB y referencia IA con puente MCP local y seguro",
   "repository": {
     "type": "git",
     "url": "https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online.git"
   },
   "scripts": {
-    "start-mcp": "node mcp-server.js"
+    "start-mcp": "node mcp-server.js",
+    "test": "node --test tests/*.test.cjs",
+    "check": "node --check mcp-server.js && node --check src/studio.js && node --check src/character-workflow.js && npm test"
   },
   "dependencies": {
-    "ws": "^8.16.0"
+    "ws": "^8.18.0"
   },
   "license": "MIT"
 }
