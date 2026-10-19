@@ -157,6 +157,14 @@
       </div>
       <p class="character-note">Selecciona brazos, codos, dedos, piernas o alas en el Outliner y registra poses en la sección de animación. Descarga el resultado como GLB.</p>
     </div>
+    <div class="section-title">Comandos guiados en español — sin IA de pago</div>
+    <div class="prop-group">
+      <label for="free-commands">¿Qué quieres hacer?</label>
+      <textarea id="free-commands" class="character-prompt" placeholder="Ejemplo: crea un ángel con movimiento de ataque y modo ligero"></textarea>
+      <button onclick="app.submitFreeCommand()">▶ Aplicar instrucciones disponibles</button>
+      <p id="free-commands-feedback" class="character-note" role="status">Acciones reconocidas: crear ángel o humanoide, ataque, defensa, reposo, golpe, derrota, modo ligero/equilibrado/visual y exportar personaje GLB.</p>
+      <p class="character-note">Esta opción utiliza reglas locales, no modelos de IA generativa. No transforma automáticamente una fotografía en un humano hiperrealista.</p>
+    </div>
     <div class="section-title">Rendimiento · Para computadores modestos</div>
     <div class="prop-group">
       <label for="quality-profile">Calidad y consumo de GPU</label>
