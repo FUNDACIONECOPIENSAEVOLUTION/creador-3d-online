@@ -1,4 +1,6 @@
-# Creador 3D Online · Estudio de animación libre 1.3
+**Nombre oficial de la aplicación: EcoBlend.** Se conserva el repositorio y la URL `creador-3d-online` para no romper enlaces existentes. El cambio de marca no implica cambiar propietario, dominio ni URL.
+
+# EcoBlend — estudio 3D online libre y multi-IA (v1.4)
 
 Estudio web **gratuito** basado en Three.js r160 para editar modelos GLB, previsualizar animaciones e intercambiar información con un agente MCP local autorizado. Los cambios se desarrollan y comprueban antes de integrarse en la rama pública `main`.
 
@@ -155,3 +157,21 @@ El intérprete ubicado en `src/free-command-assistant.js` usa reglas estrictas *
 ## Licencia y colaboración
 
 Este repositorio incluye `LICENSE` con la licencia MIT para su código, de modo que otras personas puedan copiarlo, aprender, modificarlo y compartir mejoras conservando el aviso de licencia. Esta licencia **no cambia las licencias de los archivos importados por el usuario**, ni las de las dependencias de terceros. Aportar mejoras preferentemente mediante un Pull Request y documentar los cambios en `MCP_AI_GUIDE.md`.
+
+---
+
+## EcoBlend 1.4 — Más allá de los humanos
+
+El objetivo del software no es únicamente crear modelos MPFB2. **EcoBlend es un editor 3D universal**, diseñado para seres humanos, personajes antropomorfos, animales, dragones, robots, armas, objetos, vehículos, arquitectura y cualquier figura que pueda descomponerse en partes y geometrías soportadas.
+
+La interfaz ya ofrece:
+
+- Plantillas web editables de gato antropomorfo, dragón, robot, árbol, silla, vehículo y torre de castillo, además del humanoide y ángel anteriores.
+- Formato `ecoblend.asset.v1` para que personas e IA describan jerarquías de piezas, articulaciones y materiales físicos, sin scripts ejecutables.
+- Herramientas MCP `mcp_asset_validate`, `mcp_asset_build` y `mcp_asset_preset`, complementadas con `mcp_get_reference_image` y capturas de cuatro vistas.
+- Descripciones en español que identifican **solo ciertas plantillas**. La comprensión libre de toda fotografía no está incluida en el editor estático: una IA multimodal conectada mediante MCP debe interpretarla y redactar un plano. No se inventarán resultados hiperrealistas.
+- Cada figura por partes puede seleccionar articulaciones, añadir clips básicos y exportarse a GLB desde la web.
+
+**Guía técnica:** [IA_IMAGEN_A_3D_ECOBLEND.md](docs/IA_IMAGEN_A_3D_ECOBLEND.md). MPFB2 permanece como posibilidad futura opcional para bases humanas; no es necesario para generar criaturas u objetos.
+
+Sin Tripo, Hunyuan, Meshy ni suscripciones obligatorias; software MIT con herramientas web gratuitas. El rendimiento y el nivel de detalle tienen límites reales en equipos modestos. El hiperrealismo auténtico, la reconstrucción exacta desde una foto y la deformación automática de mallas orgánicas siguen en desarrollo.
