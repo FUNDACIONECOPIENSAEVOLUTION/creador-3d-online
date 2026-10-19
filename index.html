@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Creador 3D Online | Studio PBR & MCP AI Vision</title>
+  <title>EcoBlend | Studio PBR & MCP AI Vision</title>
   <link rel="stylesheet" href="./styles/studio.css" />
 
   <script type="importmap">
@@ -20,9 +20,9 @@
   <header>
     <div class="brand">
       <div class="brand-dot"></div>
-      <span>Creador 3D Online</span>
+      <span>EcoBlend</span>
       <a class="repo-badge" href="https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online" target="_blank">GitHub Repo</a>
-      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP Vision v1.1</span>
+      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP EcoBlend v1.4</span>
     </div>
 
     <div class="toolbar">
@@ -84,7 +84,7 @@
 
   <main id="viewport-container">
     <div id="viewport-overlay">
-      <strong>Creador 3D Online — PBR Studio (ACES Filmic)</strong><br/>
+      <strong>EcoBlend — PBR Studio (ACES Filmic)</strong><br/>
       Click Izq: Seleccionar | Click Der / Alt+Click: Orbitar | Rueda: Zoom | Arrastra archivos <code>.GLB / .OBJ / .FBX</code> al lienzo<br/>
       Atajos: <code>G</code> Mover | <code>R</code> Rotar | <code>S</code> Escalar | <code>D</code> Duplicar | <code>Supr</code> Eliminar
     </div>
@@ -123,13 +123,13 @@
       </div>
     </div>
 
-    <div class="section-title">Personajes IA · Imagen, descripción y rig</div>
+    <div class="section-title">Creación 3D con IA · Imagen, objeto y descripción</div>
     <div class="prop-group" id="character-workflow">
       <label for="reference-file">Imagen de referencia (JPG / PNG / WebP)</label>
       <input class="character-file" id="reference-file" type="file" accept="image/png,image/jpeg,image/webp" onchange="app.handleReferenceChange(event)" />
       <img id="reference-preview" alt="Referencia para crear personaje" />
-      <label for="character-prompt">¿Qué personaje quieres crear?</label>
-      <textarea class="character-prompt" id="character-prompt" placeholder="Ej.: Ángel adulto para ajedrez, anatomía realista, armadura dorada, alas con plumas, cinco dedos por mano y animaciones de ataque, defensa e idle."></textarea>
+      <label for="character-prompt">Describe cualquier modelo, criatura, objeto o escena 3D</label>
+      <textarea class="character-prompt" id="character-prompt" placeholder="Ej.: gato antropomorfo con armadura, dragón de cuatro patas, robot de ajedrez, árbol, torre de castillo, vehículo…"></textarea>
       <label for="character-use">Destino</label>
       <select id="character-use"><option value="chess_game">Ajedrez / videojuego</option><option value="webar">WebAR · 15 MB</option><option value="cinematic">Render cinematográfico</option></select>
       <div class="character-actions">
@@ -148,6 +148,28 @@
       <p class="character-note">Puedes importar un GLB con animaciones o crear clips nuevos con el editor de poses. Los modelos sin esqueleto pueden moverse como piezas rígidas; para doblar brazos necesitas huesos/pesos o extremidades separadas.</p>
     </div>
 
+    <div class="section-title">EcoBlend · Taller universal de modelos 3D</div>
+    <div class="prop-group" id="universal-models">
+      <p class="character-note">Personas, antropomorfos, criaturas, robots, objetos y escenarios. Las plantillas son figuras editables y animables; no equivalen a reconstrucciones hiperrealistas de imágenes.</p>
+      <label for="asset-preset">Plantilla para empezar</label>
+      <select id="asset-preset">
+        <option value="anthro-cat">Gato antropomorfo</option>
+        <option value="dragon">Dragón fantástico</option>
+        <option value="robot">Robot articulado</option>
+        <option value="tree">Árbol</option>
+        <option value="chair">Silla</option>
+        <option value="vehicle">Vehículo</option>
+        <option value="castle">Torre de castillo</option>
+      </select>
+      <button onclick="app.createAssetPreset()">Crear plantilla 3D gratuita</button>
+      <label for="asset-blueprint">Plano 3D editable (JSON EcoBlend)</label>
+      <textarea class="character-prompt" id="asset-blueprint" rows="6" placeholder='{"version":"ecoblend.asset.v1","name":"Mi modelo","category":"creature","parts":[...]}'></textarea>
+      <div class="character-actions">
+        <button onclick="app.buildAssetFromEditor()">Construir plano 3D</button>
+        <button onclick="app.copyPresetBlueprint()">Cargar plano de plantilla</button>
+      </div>
+      <p class="character-note">Una IA puede convertir la imagen en una lista estructurada de piezas y enviar ese plano mediante MCP. EcoBlend ejecuta solamente geometrías validadas, nunca código JavaScript arbitrario.</p>
+    </div>
     <div class="section-title">Personajes creados en la web — Gratis</div>
     <div class="prop-group" id="free-characters">
       <p class="character-note">Sin instalar modelos IA ni suscripciones: se genera aquí mismo un humanoide articulado de geometría ligera. Es una base editable, no un humano fotorrealista terminado.</p>
