@@ -78,7 +78,22 @@ const tools = [
     inputSchema: {
       type: 'object',
       required: ['kind'],
-      properties: { kind: { type: 'string', enum: ['idle', 'attack', 'defend', 'hit', 'defeat'] } }
+      properties: {
+        kind: { type: 'string', enum: ['idle', 'attack', 'defend', 'hit', 'defeat'] },
+        rootUuid: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'mcp_animation_play',
+    description: 'Previsualizar clip existente y, opcionalmente, colocarlo en un instante concreto.',
+    inputSchema: {
+      type: 'object',
+      required: ['name'],
+      properties: {
+        name: { type: 'string' }, rootUuid: { type: 'string' },
+        time: { type: 'number', minimum: 0, maximum: 60 }
+      }
     }
   },
   {
