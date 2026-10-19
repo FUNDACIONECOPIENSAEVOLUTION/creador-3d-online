@@ -60,6 +60,8 @@
       <div class="mcp-status"><strong>MCP Nube · ChatGPT</strong><span id="remote-state">Desconectado</span></div>
       <label for="remote-mcp-base" style="font-size:11px;">Dirección HTTPS del servidor EcoBlend (Cloudflare)</label>
       <input id="remote-mcp-base" type="url" placeholder="https://ecoblend-mcp.tu-cuenta.workers.dev" autocomplete="off" spellcheck="false" />
+      <label for="remote-pair-key" style="font-size:11px;">Clave privada de tu instalación (solo para abrir una sala)</label>
+      <input id="remote-pair-key" type="password" placeholder="Clave creada en Cloudflare; NO la envíes por chat" autocomplete="off" />
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
         <button class="mcp-btn" onclick="app.connectRemoteMCP()">Conectar nube</button>
         <button class="mcp-btn" onclick="app.disconnectRemoteMCP()">Desconectar</button>
