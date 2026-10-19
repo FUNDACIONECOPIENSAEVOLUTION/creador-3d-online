@@ -21,7 +21,7 @@ test('Reconoce humanoide, defensa y exportar modelo GLB', () => {
 });
 
 test('Rechaza instrucciones que no sabe ejecutar y textos excesivos', () => {
-  assert.throws(() => planFreeCommand('Haz un humano totalmente fotorrealista a partir de mi foto'), /aún no soportada/);
+  assert.throws(() => planFreeCommand('Haz un humano totalmente fotorrealista a partir de mi foto'), /aún no está soportada/);
   assert.throws(() => planFreeCommand('a'.repeat(1001)), /1000 caracteres/);
 });
 
