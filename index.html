@@ -147,6 +147,25 @@
       <p class="character-note">Puedes importar un GLB con animaciones o crear clips nuevos con el editor de poses. Los modelos sin esqueleto pueden moverse como piezas rígidas; para doblar brazos necesitas huesos/pesos o extremidades separadas.</p>
     </div>
 
+    <div class="section-title">Personajes creados en la web — Gratis</div>
+    <div class="prop-group" id="free-characters">
+      <p class="character-note">Sin instalar modelos IA ni suscripciones: se genera aquí mismo un humanoide articulado de geometría ligera. Es una base editable, no un humano fotorrealista terminado.</p>
+      <div class="character-actions">
+        <button onclick="app.createWebCharacter('humanoid')">🧍 Crear humano articulado</button>
+        <button onclick="app.createWebCharacter('angel')">🪽 Crear guardián alado</button>
+      </div>
+      <p class="character-note">Selecciona brazos, codos, dedos, piernas o alas en el Outliner y registra poses en la sección de animación. Descarga el resultado como GLB.</p>
+    </div>
+    <div class="section-title">Rendimiento · Para computadores modestos</div>
+    <div class="prop-group">
+      <label for="quality-profile">Calidad y consumo de GPU</label>
+      <select id="quality-profile" onchange="app.setQualityProfile(this.value)">
+        <option value="low">Ligero — 30 FPS, sin sombras, menos píxeles</option>
+        <option value="balanced">Equilibrado — sombras y 60 FPS</option>
+        <option value="high">Visual — hasta 2x píxeles y sombras</option>
+      </select>
+      <p class="character-note">Se aplica en tu navegador sin enviar nada al servidor. Cambia a Ligero si tu equipo se calienta o el movimiento no es fluido.</p>
+    </div>
     <div class="section-title">Animación libre · Huesos y fotogramas clave</div>
     <div class="prop-group" id="animation-authoring">
       <label><input id="show-bones" type="checkbox" onchange="app.refreshOutliner()" /> Mostrar huesos en Outliner</label>
