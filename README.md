@@ -137,3 +137,21 @@ En equipos modestos el perfil **Ligero** limita el dibujo a 30 cuadros por segun
 - Asistencia IA desde chats mediante un puente seguro compatible; cualquier nube compartida requiere límites de infraestructura y presupuesto.
 
 **No se incluyen Tripo, Hunyuan3D, Meshy ni APIs de pago en el editor.** La IA controla herramientas de código, no ejecuta un modelo generativo enorme en los computadores de los usuarios. Los artefactos originales producidos por la herramienta de geometría procedural se ofrecen para libre uso; verificar licencias de modelos externos importados.
+
+---
+
+## Comandos guiados gratuitos en español
+
+El usuario puede escribir instrucciones básicas en el panel **Comandos guiados en español** y pulsar **Aplicar instrucciones disponibles**:
+
+- `crea un ángel con movimiento de ataque y modo ligero`
+- `crea humanoide`
+- `modo equilibrado`
+- `defensa` (con el personaje seleccionado)
+- `descarga personaje GLB`
+
+El intérprete ubicado en `src/free-command-assistant.js` usa reglas estrictas **sin servidores, modelos de IA ni pagos**. Cuando no entiende una instrucción, lo avisa y no pretende haber generado una figura compleja a partir del texto. La futura integración de chats de IA debe utilizar las herramientas MCP autorizadas, no evaluación de código remoto.
+
+## Licencia y colaboración
+
+Este repositorio incluye `LICENSE` con la licencia MIT para su código, de modo que otras personas puedan copiarlo, aprender, modificarlo y compartir mejoras conservando el aviso de licencia. Esta licencia **no cambia las licencias de los archivos importados por el usuario**, ni las de las dependencias de terceros. Aportar mejoras preferentemente mediante un Pull Request y documentar los cambios en `MCP_AI_GUIDE.md`.
