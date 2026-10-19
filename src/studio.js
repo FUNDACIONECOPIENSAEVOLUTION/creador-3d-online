@@ -668,6 +668,7 @@ import * as THREE from 'three';
               { name: 'mcp_animation_keyframe', description: 'Registrar fotograma clave de un hueso o pieza individual con tiempo, posición y rotación.' },
               { name: 'mcp_animation_commit', description: 'Convertir los fotogramas a AnimationClip glTF exportable.' },
               { name: 'mcp_animation_preset', description: 'Movimiento básico gratis de pieza completa.' },
+              { name: 'mcp_animation_play', description: 'Previsualizar un clip sobre el modelo; opcional instante de tiempo.' },
               { name: 'mcp_animation_pivot', description: 'Crear articulación en una extremidad de malla separada.' }
             ];
           },
@@ -786,9 +787,22 @@ import * as THREE from 'three';
                 params.rootUuid ? self.animationEditor.resolve(params.rootUuid) : self.selectedObject
               );
               else if (method === 'mcp_animation_keyframe') result = self.animationEditor.poseAndRecord(params);
-              else if (method === 'mcp_animation_commit') result = self.animationEditor.saveAction();
-              else if (method === 'mcp_animation_preset') result = self.animationEditor.makeRigidPreset(params.kind);
+              else if (method === 'mcp_animation_commit') result = self.animationEditor.saveAction(params.rootUuid ? self.animationEditor.resolve(params.rootUuid) : self.selectedObject);
+              else if (method === 'mcp_animation_preset') result = self.animationEditor.makeRigidPreset(params.kind, params.rootUuid ? self.animationEditor.resolve(params.rootUuid) : self.selectedObject);
               else if (method === 'mcp_animation_pivot') result = self.animationEditor.addPivot(params);
+              else if (method === 'mcp_animation_play') {
+                const root = params.rootUuid ? self.animationEditor.rootFor(self.animationEditor.resolve(params.rootUuid)) : self.animationEditor.rootFor(self.selectedObject);
+                self.characterWorkflow.selectModel(root);
+                const idx = self.characterWorkflow.getClipsFor(root).findIndex(clip => clip.name === params.name);
+                if (idx < 0) throw new Error('Clip no encontrado.');
+                self.characterWorkflow.play(String(idx));
+                if (params.time !== undefined) {
+                  if (typeof params.time !== 'number' || !Number.isFinite(params.time) || params.time < 0 || params.time > 60) throw new Error('Tiempo inválido.');
+                  self.characterWorkflow.seek(params.time);
+                  self.characterWorkflow.pause();
+                }
+                result = { clip: params.name, root: root.name, status: 'playing' };
+              }
               else if (method === 'mcp_spawn_pbr_mesh') {
                 const mesh = self.addPrimitive(params.type || 'sphere', params);
                 result = { status: 'created', name: mesh.name, uuid: mesh.uuid };
