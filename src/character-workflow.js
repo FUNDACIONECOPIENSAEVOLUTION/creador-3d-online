@@ -1,0 +1,168 @@
+import * as THREE from 'three';
+
+/**
+ * Capabilities deliberately separated from scene editing.
+ * A reference image is a CREATION BRIEF, not an automatic image-to-3D service.
+ * Actual articulated/photoreal characters must be imported as GLB (or produced
+ * by a separate consented Blender/AI pipeline).
+ */
+export class CharacterWorkflow {
+  constructor(studio) {
+    this.studio = studio;
+    this.imageDataUrl = null;
+    this.imageMimeType = null;
+    this.animationSets = new Map();
+    this.active = null;
+    this.clock = new THREE.Clock();
+  }
+
+  async loadReference(file) {
+    if (!file) return;
+    if (!file.type.startsWith('image/') || file.size > 12 * 1024 * 1024) {
+      throw new Error('Selecciona una imagen válida de máximo 12 MB.');
+    }
+    const imageUrl = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error('La imagen no se puede abrir.'));
+        image.src = imageUrl;
+      });
+      const ratio = Math.min(1, 1024 / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * ratio));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * ratio));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      this.imageMimeType = 'image/jpeg';
+      this.imageDataUrl = canvas.toDataURL('image/jpeg', 0.83);
+      const preview = document.getElementById('reference-preview');
+      preview.src = this.imageDataUrl;
+      preview.style.display = 'block';
+      this.studio.setStatus('Referencia cargada. Escribe la descripción y comparte el encargo mediante MCP.');
+    } finally {
+      URL.revokeObjectURL(imageUrl);
+    }
+  }
+
+  getBrief() {
+    const description = document.getElementById('character-prompt').value.trim();
+    return {
+      schemaVersion: '1.0',
+      type: 'character_reference',
+      description,
+      intendedUse: document.getElementById('character-use').value,
+      exportFormat: 'glb',
+      targetMaxMegabytes: 15,
+      rigRequired: true,
+      animationDesired: true,
+      referenceImageAvailable: !!this.imageDataUrl,
+      instructions: 'Crear en una herramienta 3D autorizada, revisar anatomía, exportar GLB con rig y clips; importar el GLB final en el estudio web.',
+      limitations: 'Este visor no genera una malla humana a partir de una imagen por sí mismo.'
+    };
+  }
+
+  getImage() {
+    if (!this.imageDataUrl) throw new Error('No se ha cargado una imagen de referencia.');
+    return { mimeType: this.imageMimeType, dataUrl: this.imageDataUrl };
+  }
+
+  downloadBrief() {
+    const brief = { ...this.getBrief(), referenceImageDataUrl: this.imageDataUrl };
+    if (!brief.description) throw new Error('Escribe primero la descripción del personaje.');
+    const blob = new Blob([JSON.stringify(brief, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'encargo-personaje-3d.json';
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    this.studio.setStatus('Encargo descargado: imagen + instrucciones. También está disponible por MCP local.');
+  }
+
+  registerImportedModel(root, clips = []) {
+    const names = clips.map((clip) => clip.name).filter(Boolean);
+    if (clips.length) {
+      const mixer = new THREE.AnimationMixer(root);
+      this.animationSets.set(root.uuid, { root, clips, mixer });
+      this.active = root.uuid;
+    } else {
+      this.active = null;
+    }
+    this.populateClips();
+    this.studio.setStatus(
+      clips.length
+        ? 'Modelo importado con ' + clips.length + ' animaciones: ' + names.join(', ')
+        : 'Modelo importado sin clips de animación. Para movimiento real se necesita un GLB riggeado con animaciones.'
+    );
+  }
+
+  selectModel(obj) {
+    let parent = obj;
+    while (parent && !this.animationSets.has(parent.uuid)) parent = parent.parent;
+    if (parent) this.active = parent.uuid;
+    this.populateClips();
+  }
+
+  populateClips() {
+    const select = document.getElementById('animation-list');
+    select.replaceChildren();
+    const data = this.animationSets.get(this.active);
+    if (!data || !data.clips.length) {
+      const option = new Option('Sin animaciones en el modelo', '');
+      select.add(option);
+      return;
+    }
+    select.add(new Option('Elegir animación…', ''));
+    data.clips.forEach((clip, i) => select.add(new Option(clip.name || 'Acción ' + (i + 1), String(i))));
+  }
+
+  play(index) {
+    const data = this.animationSets.get(this.active);
+    if (!data || index === '') return;
+    const clip = data.clips[Number(index)];
+    if (!clip) throw new Error('Clip no encontrado.');
+    data.mixer.stopAllAction();
+    const action = data.mixer.clipAction(clip);
+    action.reset().play();
+    data.mixer.timeScale = Number(document.getElementById('animation-speed').value);
+    this.studio.setStatus('Reproduciendo: ' + clip.name);
+  }
+
+  pause() {
+    const data = this.animationSets.get(this.active);
+    if (data) data.mixer.timeScale = 0;
+  }
+
+  resume() {
+    const data = this.animationSets.get(this.active);
+    if (data) data.mixer.timeScale = Number(document.getElementById('animation-speed').value);
+  }
+
+  setSpeed(value) {
+    const data = this.animationSets.get(this.active);
+    if (data && data.mixer.timeScale !== 0) data.mixer.timeScale = Number(value);
+  }
+
+  getExportClips() {
+    return Array.from(this.animationSets.values()).flatMap((set) => set.clips);
+  }
+
+  update() {
+    const dt = Math.min(this.clock.getDelta(), 0.1);
+    for (const set of this.animationSets.values()) set.mixer.update(dt);
+  }
+
+  forget(root) {
+    const ids = [];
+    root.traverse((node) => { if (this.animationSets.has(node.uuid)) ids.push(node.uuid); });
+    for (const id of ids) {
+      const item = this.animationSets.get(id);
+      item.mixer.stopAllAction();
+      item.mixer.uncacheRoot(item.root);
+      this.animationSets.delete(id);
+      if (this.active === id) this.active = null;
+    }
+    this.populateClips();
+  }
+}
