@@ -108,8 +108,8 @@ export class AnimationEditor {
     return clip;
   }
 
-  saveAction() {
-    const action = this.getDraft();
+  saveAction(node = this.studio.selectedObject) {
+    const action = this.getDraft(node);
     const clip = this.buildClip(action);
     this.studio.characterWorkflow.registerAuthoredClip(action.root, clip);
     this.studio.logAIAction('Acción animada creada: ' + clip.name);
@@ -118,7 +118,7 @@ export class AnimationEditor {
 
   inspect() {
     const target = this.studio.selectedObject;
-    if (!target) return { action: null };
+    if (!target || target.name === 'Studio_Floor') return { action: null };
     const root = this.rootFor(target);
     const draft = this.drafts.get(root.uuid);
     const clips = this.studio.characterWorkflow.getClipsFor(root);
