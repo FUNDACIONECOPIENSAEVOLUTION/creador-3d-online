@@ -13,50 +13,59 @@ Si eres un agente de IA (Claude Code, Cursor, Windsurf, GitHub Copilot, Gemini, 
 
 ---
 
-## 1. Arquitectura del Proyecto
-`creador-3d-online` es un estudio web de modelado y renderizado 3D hiperrealista tipo Blender que se ejecuta 100% en el navegador sobre **Three.js r160 (WebGL2)** y cuenta con un puente bidireccional **Model Context Protocol (MCP)**.
+## 1. Arquitectura actual (versión 1.3)
 
-### Archivos Principales del Repositorio:
-- `index.html`: Aplicación completa (Single-File Studio) con interfaz tipo Blender, motor PBR (`MeshPhysicalMaterial` + `RoomEnvironment` + `ACESFilmicToneMapping`), generador de texturas procedurales, importador/exportador `.GLB` y API `window.MCP_BRIDGE`.
-- `MCP_AI_GUIDE.md`: Documento maestro de coordinación y memoria compartida entre diferentes inteligencias artificiales.
-- `mcp-server.js`: Servidor puente en Node.js que enlaza clientes MCP de escritorio (Claude Desktop, Cursor, etc.) con el navegador mediante WebSockets (`ws://localhost:8765`).
-- `package.json`: Configuración de dependencias para el puente MCP local.
+**El editor funciona en GitHub Pages y las funciones básicas no requieren instalación ni servicios de IA.**
 
----
+- `index.html` — Interfaz modular del estudio 3D.
+- `styles/studio.css` — Estilos y diseño adaptable.
+- `src/studio.js` — Escena, importación GLB/GLTF/OBJ/FBX, exportación GLB, controles MCP de navegador y perfiles de GPU.
+- `src/procedural-character.js` — Humanoide y guardián alado con miembros separados y articulaciones generados en navegador. No son humanos fotorrealistas.
+- `src/animation-editor.js` — Poses y fotogramas de huesos/pivotes, pistas glTF/AnimationClip, presets de batalla.
+- `src/character-workflow.js` — Imagen de referencia, clips importados/creados, visualización y exportación.
+- `src/free-command-assistant.js` — Interpretación de comandos en español basada en reglas, NO modelo de lenguaje generativo.
+- `mcp-server.js` — Puente de escritorio opcional por stdio↔WS loopback, con origin permitido, sin evaluación remota de JS.
+- `tests/` — Pruebas de geometría, huesos, interpolación, GLB y seguridad del puente.
 
-## 2. Protocolo de Visión y Control para IAs (`window.MCP_BRIDGE`)
+**Límites confirmados:** el navegador necesita WebGL compatible. Una malla única sin huesos/pesos no admite flexión anatómica automática. La creación fotorrealista desde imágenes está pendiente y no puede prometerse sin trabajo de malla y render. No existen dependencias obligatorias a servicios comerciales de generación 3D.
 
-Toda IA puede ver y manipular la escena 3D invocando `window.MCP_BRIDGE.handleJsonRpc(request)` o a través del WebSocket `ws://localhost:8765`.
+## 2. Contrato de herramientas IA
 
-### Herramientas Disponibles (`tools/list`):
+La escena puede inspeccionarse en el navegador mediante `window.MCP_BRIDGE.handleJsonRpc(request)`. Un agente de escritorio configurado puede usar `mcp-server.js` a través de MCP stdio y enlazar su pestaña en `ws://localhost:8765` cuando lo permita el usuario. **Los chats alojados en nube no pueden alcanzar ese localhost automáticamente.**
 
-| Método MCP | Descripción | Parámetros (`params`) | Respuesta para la IA |
-| :--- | :--- | :--- | :--- |
-| `mcp_get_scene_graph` | Devuelve el estado exacto de la escena, cámara y materiales PBR de cada objeto. | `{}` | JSON con `camera` y arreglo `objects` (UUID, posición, rotación, escala, shader físico). |
-| `mcp_capture_viewport` | Captura una fotografía PNG en Base64 de la cámara actual. | `{}` | `{ mimeType: "image/png", mode: "single", dataUrl: "data:image/png;base64,..." }` |
-| `mcp_capture_quad_view` | **Visión Espacial 3D:** Renderiza 4 vistas simultáneas (Perspectiva, Frontal Z+, Superior Y+, Lateral X+) en una sola imagen de 800x600. | `{}` | `{ mimeType: "image/png", mode: "quad_orthographic", dataUrl: "data:image/png;base64,..." }` |
-| `mcp_spawn_pbr_mesh` | Crea una primitiva o malla de alta densidad con material físico hiperrealista. | `{ type, name, color, metalness, roughness, clearcoat, transmission, ior, x, y, z }` | `{ status: "created", name, uuid }` |
-| `mcp_modify_object` | Modifica transformaciones o propiedades PBR de un objeto existente. | `{ name, position, scale, color, metalness, roughness, transmission }` | `{ status: "updated", name }` |
-| `mcp_execute_three_code` | Ejecuta código JavaScript/Three.js arbitrario con acceso directo a `(THREE, scene, app)`. | `{ code: "..." }` | `{ status: "executed", output }` |
+| Herramienta | Función |
+| --- | --- |
+| `mcp_get_scene_graph` | Leer objetos y huesos, UUIDs, transformaciones y materiales. |
+| `mcp_capture_viewport` / `mcp_capture_quad_view` | Capturar imágenes del visor en PNG. |
+| `mcp_get_creation_brief` / `mcp_get_reference_image` | Leer el encargo e imagen elegidos por el usuario. |
+| `mcp_character_create` | Crear plantilla ligera humanoide/ángel directamente en la web. |
+| `mcp_set_quality` | Elegir modo gráfico bajo/equilibrado/alto. |
+| `mcp_spawn_pbr_mesh` / `mcp_modify_object` | Crear primitivas o transformar objetos autorizados. |
+| `mcp_animation_inspect` | Consultar clips, huesos y articulaciones. |
+| `mcp_animation_create` / `mcp_animation_keyframe` / `mcp_animation_commit` | Crear acción, registrar poses y generar clip GLB. |
+| `mcp_animation_preset` / `mcp_animation_pivot` / `mcp_animation_play` | Movimiento rígido de piezas, pivotes y previsualización. |
 
----
+**Bloqueado:** `mcp_execute_three_code` está deshabilitado; nunca se debe reintroducir `new Function` ni `eval` como herramienta remota. Evitar puentes públicos sin autenticación, control de permisos, revisión humana y aislamiento.
 
-## 3. Flujo Recomendado de Modelado Asistido por IA (Loop Visión-Acción)
-Cuando un usuario pida a una IA *"Crea un modelo 3D hiperrealista de X"*:
-1. **Inspeccionar:** Llamar a `mcp_get_scene_graph` para conocer qué objetos existen en el espacio.
-2. **Construir:** Usar `mcp_spawn_pbr_mesh` o inyectar geometría compuesta mediante `mcp_execute_three_code`.
-3. **Ver y Verificar:** Llamar a `mcp_capture_quad_view` para observar la proporción desde los 4 ángulos ortográficos y verificar reflejos, sombras e intersecciones.
-4. **Refinar:** Ajustar posición, escala o parámetros de `MeshPhysicalMaterial` (`transmission`, `ior`, `clearcoat`, `roughness`) con `mcp_modify_object`.
-5. **Documentar:** Generar la entrada de bitácora (botón `📝 Log para Guía IA` o edición directa) y guardarla en la Sección 5 de este archivo.
+## 3. Flujo 3D inclusivo recomendado
 
----
+1. Abrir GitHub Pages en modo ligero y crear una base paramétrica articulada o importar un asset abierto.
+2. Seleccionar articulaciones, registrar poses en varios segundos y guardar un clip.
+3. Previsualizar y exportar **solo el personaje seleccionado** a GLB con sus animaciones.
+4. Revisar varias vistas y el peso del archivo; hacer pruebas visuales en navegador/móvil real.
+5. Si se emplea una IA autorizada, enviarle instrucciones para operar herramientas concretas y medir resultados; no simular la generación fotorrealista con una figura básica.
 
-## 4. Roadmap Técnico para Siguientes IAs
-- [x] **v1.0:** Motor PBR base, `RoomEnvironment`, TransformControls (`G`, `R`, `S`), exportador `.GLB` y `window.MCP_BRIDGE`.
-- [x] **v1.1:** Vinculación oficial con `FUNDACIONECOPIENSAEVOLUTION/creador-3d-online`, sistema de **Visión Cuádruple (`mcp_capture_quad_view`)**, importación Drag & Drop de `.GLB`, subdivisión básica, texturas bump procedurales y servidor puente `mcp-server.js`.
-- [ ] **v1.2 (Siguiente IA):** Implementar operaciones booleanas CSG (Unión, Diferencia, Intersección) usando `three-bvh-csg` para modelado de piezas complejas.
-- [ ] **v1.3:** Añadir modo de escultura dinámica con pinceles (Inflate, Smooth, Grab) sobre los vértices de la malla.
-- [ ] **v1.4:** Integrar soporte WebXR / Realidad Aumentada para previsualizar los modelos creados en el entorno físico real.
+La creación de anatomía avanzada, malla única autorriggeada, plantillas hiperrealistas, materiales faciales y optimización LOD son líneas de desarrollo futuras: priorizar técnicas ligeras reproducibles sin suscripciones.
+
+## 4. Hoja de ruta actualizada
+
+- [x] v1.0/v1.1: base PBR, visor y controles Three.js, GLB y primer puente.
+- [x] v1.2: módulos, imagen de referencia, importación y reproducción de clips, MCP local endurecido.
+- [x] v1.3 (rama de desarrollo): figuras base gratuitas en navegador, animaciones por huesos/pivotes, presets, exportación GLB y modo ligero; sujeto a verificación visual del usuario y CI.
+- [ ] Próximo: editor de rig guiado para malla única (pesos/skinning), biblioteca de cuerpos con licencia y mejores texturas.
+- [ ] Persistencia e historial de proyectos, Undo/Redo, LOD y compresión para WebAR.
+- [ ] Chat IA remoto seguro opcional sin cobros obligatorios; se necesita infraestructura si se sirve de forma compartida.
+- [ ] Escultura avanzada, booleanas, materiales por nodos y Realidad Aumentada.
 
 ---
 
