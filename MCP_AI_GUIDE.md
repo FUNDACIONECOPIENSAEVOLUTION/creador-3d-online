@@ -67,3 +67,22 @@ Cuando un usuario pida a una IA *"Crea un modelo 3D hiperrealista de X"*:
 | Fecha (YYYY-MM-DD) | Agente / Modelo IA | Cambios e Implementaciones Realizadas | Archivos Tocados | Próximo Paso Sugerido |
 | :--- | :--- | :--- | :--- | :--- |
 | 2026-10-19 | **Gemini (Arquitecto Inicial)** | Creación del motor PBR Three.js r160, interfaz estilo Blender, atajos `G/R/S/D/Supr`, exportador/importador `.GLB`, texturas procedurales, visión cuádruple (`mcp_capture_quad_view`) y puente `mcp-server.js` configurado para `FUNDACIONECOPIENSAEVOLUTION/creador-3d-online`. | `index.html`, `MCP_AI_GUIDE.md`, `mcp-server.js`, `package.json`, `README.md` | Integrar CSG Booleans (`three-bvh-csg`) y pinceles de escultura de vértices en `index.html`. |
+| 2026-10-19 | **ChatGPT GPT-6 (implementación 1.2, rama feature)** | Separa CSS y JS, agrega encargo foto+texto para agentes, importar GLB riggeado con selección jerárquica, clips AnimationMixer, exportación con clips, visión ortográfica, MCP stdio/WS restringido con bloqueo de ejecución de JS remota, pruebas y ejemplo de ángel. **No incluye generación automática de humanos desde imágenes; requiere Blender u otro productor 3D.** | `index.html`, `styles/studio.css`, `src/studio.js`, `src/character-workflow.js`, `mcp-server.js`, `package.json`, `README.md`, `tests/`, `scripts/`, `examples/` | Ejecutar CI, revisar PR, comprobar con personaje GLB real y validar producción Blender+MPFB. |
+
+---
+
+## 6. Actualización 1.2 — ChatGPT: laboratorio de personajes (rama de desarrollo)
+
+**Rama:** `feature/character-studio-mcp-v12`. Cambios sometidos a PR, sujetos a pruebas; no confundir con funcionalidades validadas sobre la rama `main`.
+
+- Separación del antiguo `index.html` monolítico en HTML, `styles/studio.css`, `src/studio.js` y `src/character-workflow.js`.
+- **Imagen + descripción:** usuario carga una referencia; se reduce localmente a JPEG de hasta 1024 px, no se envía por defecto. La IA local autorizada puede usar `mcp_get_creation_brief` y `mcp_get_reference_image`. Existe descarga de JSON con encargo.
+- **Rig y clips:** importador acepta GLB autocontenido con jerarquía y animaciones glTF; las reproduce con `THREE.AnimationMixer` y busca conservarlas al exportar. Crear clips nuevos aún necesita Blender/otras herramientas.
+- **Visión 4 vistas:** frontal, lateral, superior pasan a usar cámaras ortográficas de verdad; perspectiva mantiene cámara original.
+- **Servidor:** WebSocket solo en `127.0.0.1`, lista explícita de Origins, protocolo MCP stdio (initialize, tools/list, tools/call). Se elimina `mcp_execute_three_code` del catálogo y se bloquea su ejecución del lado del navegador. Se usan operaciones tipadas en su lugar.
+- **Validación:** `npm run check` y test de integración manual con GLB aún deben ejecutarse/verificarse tras revisión del PR.
+- **Limitación fundamental:** WebGL/Three.js no genera automáticamente cuerpos humanos hiperrealistas desde fotografías. Para esa capacidad se necesitará integrar un pipeline de Blender + MPFB, un modelo 3D con licencia apropiada, rigging/retopología y eventualmente un servicio de IA adicional, dependiendo de presupuesto y calidad. La interfaz actual **solo prepara el encargo**.
+
+**Seguridad de versiones anteriores:** jamás reconectar un servidor que exponga `mcp_execute_three_code` al público. El método original evaluaba JavaScript sin controles suficientes.
+
+**Próximos pasos ordenados:** (1) pasar CI y probar un GLB riggeado real, (2) solucionar fallos de exportación y texturas externas, (3) crear una biblioteca legalmente distribuible de personajes base, (4) pipeline local Blender/MPFB para generación/refinado, (5) animaciones originales de batalla e integración ECOAJEDREZ, (6) optimización LOD/GLB <=15 MB con medidas reales.
