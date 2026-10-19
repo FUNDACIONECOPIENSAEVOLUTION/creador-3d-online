@@ -17,6 +17,31 @@ export const SUPPORTED_ORIGINS = new Set([
 const ROOM_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_JSON = 135 * 1024;
 
+const encoder=new TextEncoder();
+function base64url(array){
+  let value='';
+  for(const byte of new Uint8Array(array))value+=String.fromCharCode(byte);
+  return btoa(value).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function roomSignature(secret,room,expires){
+  const key=await crypto.subtle.importKey('raw',encoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  return base64url(await crypto.subtle.sign('HMAC',key,encoder.encode(room+'.'+expires)));
+}
+function equalStrings(a,b){
+  if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;
+  let diff=0;
+  for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);
+  return diff===0;
+}
+function allowedOrigin(request){return SUPPORTED_ORIGINS.has(request.headers.get('Origin'));}
+function cors(request){const origin=request.headers.get('Origin');return allowedOrigin(request)?{
+  'Access-Control-Allow-Origin':origin,
+  'Access-Control-Allow-Methods':'POST, OPTIONS',
+  'Access-Control-Allow-Headers':'Authorization, Content-Type',
+  Vary:'Origin'
+}:{};}
+
+
 const tools = [
   { name:"ecoblend_scene", description:"Consultar grafo y geometría de la escena EcoBlend, previa aprobación en el navegador.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_quad_view", description:"Obtener captura de cuatro vistas 3D, previa aprobación en el navegador.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
@@ -76,12 +101,40 @@ export default {
     const url=new URL(request.url);
     if(url.pathname==="/health" && request.method==="GET")
       return json({service:"ecoblend-remote-mcp",version:"0.1.0",mode:"temporary-room",mcp:"/mcp"});
+
+    // Creating a session requires a server-side secret known only to the owner.
+    // This credential is never stored in GitHub or sent to ChatGPT.
+    if(url.pathname==="/pair"){
+      if(request.method==='OPTIONS')return new Response(null,{
+        status:allowedOrigin(request)?204:403,headers:cors(request)
+      });
+      if(request.method!=='POST')return new Response('Method not allowed',{status:405});
+      if(!allowedOrigin(request))return new Response('Forbidden origin',{status:403});
+      if(typeof env.ECOBLEND_PILOT_KEY!=='string'||env.ECOBLEND_PILOT_KEY.length<24)
+        return json({error:'ECOBLEND_PILOT_KEY no configurada en Cloudflare'},503,cors(request));
+      const auth=request.headers.get('Authorization')||'';
+      if(!equalStrings(auth,'Bearer '+env.ECOBLEND_PILOT_KEY))
+        return json({error:'Credencial de emparejamiento no válida.'},401,cors(request));
+      const room=crypto.randomUUID();
+      const expires=Date.now()+60000;
+      const sig=await roomSignature(env.ECOBLEND_PILOT_KEY,room,expires);
+      return json({room,ticket:expires+'.'+sig,expiresSeconds:60},200,cors(request));
+    }
     if(url.pathname==="/ws"){
       if(request.method!=="GET"||request.headers.get("Upgrade")?.toLowerCase()!=="websocket")
         return new Response("WebSocket required",{status:426});
       if(!SUPPORTED_ORIGINS.has(request.headers.get("Origin")))return new Response("Forbidden origin",{status:403});
       const room=url.searchParams.get("room");
       if(badRoom(room))return new Response("Invalid room",{status:400});
+      if(typeof env.ECOBLEND_PILOT_KEY!=='string'||env.ECOBLEND_PILOT_KEY.length<24)
+        return new Response("Pairing not configured",{status:503});
+      const ticket=url.searchParams.get('ticket')||'';
+      const match=ticket.match(/^(\d{13})\.([a-zA-Z0-9_-]{43})$/);
+      if(!match||Number(match[1])<Date.now()||Number(match[1])>Date.now()+60000)
+        return new Response("Invalid or expired pairing ticket",{status:403});
+      const expected=await roomSignature(env.ECOBLEND_PILOT_KEY,room,Number(match[1]));
+      if(!equalStrings(expected,match[2]))return new Response("Invalid pairing ticket",{status:403});
+
       const stub=env.ECOBLEND_ROOMS.get(env.ECOBLEND_ROOMS.idFromName(room));
       return stub.fetch(request);
     }
