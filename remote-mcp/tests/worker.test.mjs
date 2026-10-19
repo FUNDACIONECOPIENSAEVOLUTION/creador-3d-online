@@ -49,3 +49,26 @@ test('Health pública no contiene información de salas',async()=>{
  const r=await worker.fetch(new Request('https://ecoblend.example/health'),env);
  assert.deepEqual((await r.json()).mcp,'/mcp');
 });
+
+test('Solo el propietario con clave larga puede crear una sala temporal',async()=>{
+ const secret='a-private-key-only-for-unit-tests-123456789';
+ const authorized={...env,ECOBLEND_PILOT_KEY:secret};
+ const link='https://ecoblend.example/pair';
+ const noOrigin=await worker.fetch(new Request(link,{method:'POST',headers:{Authorization:'Bearer '+secret}}),authorized);
+ assert.equal(noOrigin.status,403);
+ const wrong=await worker.fetch(new Request(link,{method:'POST',headers:{
+   Origin:'https://fundacionecopiensaevolution.github.io',Authorization:'Bearer wrong-key'
+ }}),authorized);
+ assert.equal(wrong.status,401);
+ const good=await worker.fetch(new Request(link,{method:'POST',headers:{
+   Origin:'https://fundacionecopiensaevolution.github.io',Authorization:'Bearer '+secret
+ }}),authorized);
+ assert.equal(good.status,200);
+ const data=await good.json();
+ assert.match(data.room,/^[0-9a-f-]{36}$/i);
+ assert.match(data.ticket,/^\d{13}\.[a-zA-Z0-9_-]{43}$/);
+ const invalidTicket=await worker.fetch(new Request('https://ecoblend.example/ws?room='+data.room+'&ticket=invalid',{
+   headers:{Origin:'https://fundacionecopiensaevolution.github.io',Upgrade:'websocket'}
+ }),authorized);
+ assert.equal(invalidTicket.status,403);
+});
