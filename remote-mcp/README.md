@@ -11,7 +11,7 @@ Se necesita una cuenta **Cloudflare** con Workers habilitado. El plan Free actua
 
 1. Entra en https://dash.cloudflare.com y crea o utiliza una cuenta gratuita.
 2. Obtén el **Account ID** en la cuenta Cloudflare.
-3. Genera un API Token con permisos limitados para implementar Workers y Durable Objects en esa cuenta. No uses la clave API global ni otorgues permisos innecesarios.
+3. Genera un API Token para el despliegue. En la creación inicial de un Worker nuevo, la documentación de Cloudflare requiere **Workers Admin** sobre el producto Workers de esa cuenta; para despliegues posteriores puedes sustituirlo por un token con **Editor** restringido a ese Worker. No uses la clave API global, no compartas tokens y revoca los permisos de creación que dejen de ser necesarios.
 4. Genera una clave aleatoria privada de 32 bytes o más. Puedes hacerlo en PowerShell con:
    ```powershell
    ([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N'))
@@ -31,18 +31,18 @@ Si el despliegue falla, mira las líneas de error de la acción. Algunas cuentas
 1. Abre https://fundacionecopiensaevolution.github.io/creador-3d-online/
 2. En **MCP Nube · ChatGPT**, pega la URL base `https://…workers.dev` (sin `/mcp`).
 3. Introduce temporalmente la misma `ECOBLEND_PILOT_KEY` guardada en GitHub. **No la pongas en el chat ni en una captura**. El navegador la transmite únicamente por HTTPS a `/pair`, no la guarda en localStorage y borra el campo después de usarla.
-4. Pulsa **Conectar nube**. Recibirás un UUID de **sala temporal de 20 minutos**. Si no aparece, revisa los mensajes del panel.
+4. Pulsa **Conectar nube**. Recibirás un **identificador firmado de sala temporal de 20 minutos** (UUID, vencimiento y firma criptográfica). Si no aparece, revisa los mensajes del panel.
 5. Deja abierta la pestaña EcoBlend. Cada acción de la IA pide una confirmación visible en esa misma pestaña; **incluso leer la escena o mostrar una imagen requiere aprobación**.
 6. Para cancelar de inmediato, pulsa **Desconectar**. Tras 20 minutos reconecta.
 
-El identificador de sala es un dato sensible temporal: úsalo solo en la conversación de trabajo autorizada. El servidor no crea sesiones compartidas de forma permanente.
+El identificador de sala firmado es una credencial temporal de acceso a una sesión, aunque por sí solo no autoriza acciones: úsalo solo en la conversación de trabajo autorizada. El servidor no crea sesiones compartidas de forma permanente.
 
 ## 3. Registrar EcoBlend en ChatGPT
 
 1. En ChatGPT abre **Plugins → + → Agregar servidor MCP personalizado**.
 2. Nombre: `EcoBlend MCP`.
 3. Conexión: pega `https://<subdominio-confirmado>.workers.dev/mcp`.
-4. En esta **prueba privada**, el servidor anuncia las herramientas MCP con autenticación `Ninguna` porque el propietario controla la creación de salas con una clave y confirma **cada** operación en su navegador. **No es OAuth ni un sistema de cuentas de producción.** Si el espacio de trabajo exige OAuth, detente: hará falta implementar OAuth 2.1; no intentes eludir la política del espacio de trabajo.
+4. En esta **prueba privada**, el servidor anuncia las herramientas MCP con autenticación `Ninguna` porque el propietario controla la creación de salas con una clave, el servidor verifica la firma y caducidad de cada sala **antes** de reservar recursos, y el navegador confirma **cada** operación. **No es OAuth ni un sistema de cuentas de producción.** Si el espacio de trabajo exige OAuth, detente: hará falta implementar OAuth 2.1; no intentes eludir la política del espacio de trabajo.
 5. Acepta la advertencia de seguridad y solicita detectar herramientas. Deberían aparecer `ecoblend_scene`, `ecoblend_quad_view`, `ecoblend_preset`, `ecoblend_build_blueprint`, `ecoblend_animation_preset` y otras.
 6. Crea/instala la conexión y selecciónala con `@` en un nuevo chat si la plataforma lo requiere.
 7. Envía el ID de sala **temporal**, no la clave privada, y pide: “Usa EcoBlend MCP, consulta mi escena en esta sala: …”. El navegador mostrará una solicitud de autorización. Revisa la acción y acepta.
@@ -53,7 +53,7 @@ El identificador de sala es un dato sensible temporal: úsalo solo en la convers
 ## 4. Protocolo y seguridad
 
 - `POST /mcp`: MCP JSON-RPC 2.0, versión `2025-06-18`, transporte HTTP stateless con `initialize`, `tools/list`, `tools/call`. Solo herramientas tipadas permitidas; no expone `eval` ni ejecución remota arbitraria de JavaScript.
-- `POST /pair`: solo desde el Origin oficial (o localhost de desarrollo) y con `Authorization: Bearer <ECOBLEND_PILOT_KEY>`; crea UUID aleatorio y ticket HMAC de 60 segundos para emparejar la pestaña.
+- `POST /pair`: solo desde el Origin oficial (o localhost de desarrollo) y con `Authorization: Bearer <ECOBLEND_PILOT_KEY>`; crea un UUID de sala firmado mediante HMAC y con caducidad de 20 minutos, más un ticket HMAC de 60 segundos para emparejar la pestaña.
 - `GET /ws`: usa WSS y ticket temporal. Cada sala solo admite una pestaña; tras 20 minutos la sala caduca.
 - Por cada invocación MCP, el Worker pregunta a la pestaña del propietario y espera aprobación expresa para leer o modificar.
 - La clave se define como **secret** de Cloudflare, no se incluye en el código público.

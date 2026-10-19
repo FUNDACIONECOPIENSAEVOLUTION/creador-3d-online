@@ -14,7 +14,7 @@ export const SUPPORTED_ORIGINS = new Set([
   "http://localhost:8000",
   "http://127.0.0.1:8000"
 ]);
-const ROOM_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ROOM_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.(\d{13})\.([a-zA-Z0-9_-]{43})$/i;
 const MAX_JSON = 135 * 1024;
 
 const encoder=new TextEncoder();
@@ -32,6 +32,14 @@ function equalStrings(a,b){
   let diff=0;
   for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);
   return diff===0;
+}
+async function verifiedRoom(secret,room){
+  const match=typeof room==='string'?room.match(ROOM_PATTERN):null;
+  if(!match||typeof secret!=='string'||secret.length<24)return false;
+  const expiry=Number(match[2]);
+  if(expiry<Date.now()||expiry>Date.now()+ROOM_TTL_MS+60000)return false;
+  const expected=await roomSignature(secret,match[1],expiry);
+  return equalStrings(expected,match[3]);
 }
 function allowedOrigin(request){return SUPPORTED_ORIGINS.has(request.headers.get('Origin'));}
 function cors(request){const origin=request.headers.get('Origin');return allowedOrigin(request)?{
@@ -115,7 +123,10 @@ export default {
       const auth=request.headers.get('Authorization')||'';
       if(!equalStrings(auth,'Bearer '+env.ECOBLEND_PILOT_KEY))
         return json({error:'Credencial de emparejamiento no válida.'},401,cors(request));
-      const room=crypto.randomUUID();
+      const roomId=crypto.randomUUID();
+      const roomExpiry=Date.now()+ROOM_TTL_MS;
+      const roomSig=await roomSignature(env.ECOBLEND_PILOT_KEY,roomId,roomExpiry);
+      const room=roomId+'.'+roomExpiry+'.'+roomSig;
       const expires=Date.now()+60000;
       const sig=await roomSignature(env.ECOBLEND_PILOT_KEY,room,expires);
       return json({room,ticket:expires+'.'+sig,expiresSeconds:60},200,cors(request));
@@ -125,7 +136,8 @@ export default {
         return new Response("WebSocket required",{status:426});
       if(!SUPPORTED_ORIGINS.has(request.headers.get("Origin")))return new Response("Forbidden origin",{status:403});
       const room=url.searchParams.get("room");
-      if(badRoom(room))return new Response("Invalid room",{status:400});
+      if(!await verifiedRoom(env.ECOBLEND_PILOT_KEY,room))
+        return new Response("Invalid or expired signed room",{status:403});
       if(typeof env.ECOBLEND_PILOT_KEY!=='string'||env.ECOBLEND_PILOT_KEY.length<24)
         return new Response("Pairing not configured",{status:503});
       const ticket=url.searchParams.get('ticket')||'';
@@ -163,6 +175,8 @@ export default {
     const args=packet.params?.arguments;
     try{
       validArgs(name,args);
+      if(!await verifiedRoom(env.ECOBLEND_PILOT_KEY,args.room))
+        throw new Error('Sala caducada o firma inválida. Reconecta desde EcoBlend.');
       const stub=env.ECOBLEND_ROOMS.get(env.ECOBLEND_ROOMS.idFromName(args.room));
       const task=await stub.fetch("https://internal.ecoblend/rpc",{
         method:"POST",headers:{"Content-Type":"application/json"},

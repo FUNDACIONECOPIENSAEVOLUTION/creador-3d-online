@@ -1048,7 +1048,7 @@ import * as THREE from 'three';
           if(!paired.ok)throw Error('No se pudo autorizar la sala ('+paired.status+'). Verifica el servidor y tu clave.');
           const pair=await paired.json();
           const room=pair.room;
-          if(!/^[a-f0-9-]{36}$/i.test(room)||typeof pair.ticket!=='string')throw Error('Respuesta de emparejamiento inválida.');
+          if(!/^[0-9a-f-]{36}\.\d{13}\.[A-Za-z0-9_-]{43}$/i.test(room)||typeof pair.ticket!=='string')throw Error('Respuesta de emparejamiento inválida.');
           const endpoint=new URL('/ws',addr.origin);
           endpoint.protocol='wss:';
           endpoint.searchParams.set('room',room);
