@@ -103,3 +103,23 @@ Cuando un usuario pida a una IA *"Crea un modelo 3D hiperrealista de X"*:
 - No se suministran credenciales ni se hacen llamadas a Tripo/Hunyuan3D/Meshy; el motor de IA puede manejar las operaciones MCP del editor, siempre que su cliente tenga autorización.
 
 **Criterio de aceptación real:** importar un GLB con brazo riggeado, seleccionar hueso, registrar fotogramas de 0 y 1 s, guardar clip, reproducir, exportar GLB, abrirlo y verificar que sigue moviendo el brazo. El CI no sustituye esta inspección visual.
+
+---
+
+## 8. Requisito de acceso universal y creación 3D sin modelo IA local (2026-10-19)
+
+**Decisión de producto:** la experiencia básica debe ser gratuita y funcionar enteramente en el navegador de un usuario con equipo modesto. MCP local, Blender y procesamiento remoto no son requisitos para crear/manipular una figura base.
+
+**Implementación en `feature/animation-studio-v13`:**
+- `src/procedural-character.js`: crea figuras humanoides y guardianes alados con pivotes para miembros/dedos/alas; materiales PBR ligeros, sin API ni descarga de modelos.
+- `index.html`: botones crear humanoide/ángel y controles de calidad gráfico.
+- `src/studio.js`: perf low/balanced/high, geometría y exportar personaje seleccionado sin incluir objetos de ejemplo, herramientas MCP `mcp_character_create` y `mcp_set_quality`.
+- `mcp-server.js`: catálogo seguro de creación de personaje/selección de calidad para IA compatible.
+- `tests/procedural-character.test.mjs`: geometría ligera, articulaciones y GLB animado exportable.
+- `styles/studio.css`: disposición adaptada a teléfonos.
+
+**Alcance preciso:** figura base estilizada y animable, NO reconstrucción fotorrealista automática de una imagen; un único mesh sin rig necesita trabajo adicional de rigging y skinning. Hiperrealismo sin pago requiere iteraciones de buenas plantillas, texturas, trabajo artístico y optimización; jamás afirmar resultados ilimitados sin computación.
+
+**Política tecnológica:** no añadir dependencias a Tripo, Hunyuan3D, Meshy ni APIs de generación con costes; usar herramientas propias, open source y assets con licencias documentadas. Un servidor gratuito no equivale a capacidad infinita de render en nube.
+
+**Pruebas:** CI pasa las verificaciones de interpolación y exportación GLB; la fluidez y diseño en teléfonos reales precisan validación manual. El plan de autorrig por pesos queda pendiente.
