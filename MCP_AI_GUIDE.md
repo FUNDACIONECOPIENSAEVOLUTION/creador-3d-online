@@ -166,3 +166,11 @@ El proyecto incluye `LICENSE` MIT para permitir reutilización del código; mant
 ### Complemento humano opcional del motor universal
 
 Se implementó `src/character-appearance.js` para aplicar ojos, cabello sencillo, piel, altura y complexión a figuras humanoides generadas por EcoBlend. Se expusieron tres herramientas MCP `mcp_human_describe`, `mcp_human_create` y `mcp_human_update` y se agregaron pruebas de rasgos. El módulo no instala MPFB2, no reemplaza el sistema de construcción universal ni pretende hiperrealismo automático.
+
+---
+
+## 11. MCP Nube piloto para ChatGPT — EcoBlend v1.5
+
+**Implementado en la rama `feature/ecoblend-remote-mcp-v15`, sujeto a CI y despliegue de la cuenta:** servidor remoto de Cloudflare Worker con Streamable HTTP `/mcp`; Durable Object para relay WSS a una sola pestaña; salas UUID temporales; autorización de apertura de sesión mediante `ECOBLEND_PILOT_KEY` almacenado exclusivamente como secreto de Cloudflare/GitHub Actions; token HMAC de emparejamiento de 60 s; confirmación visual en navegador por cada lectura, imagen o escritura; herramientas declarativas de escena, captura, preset, blueprint y animación. Sin `eval`, sin transferencia por defecto de imágenes privadas y sin procesamiento 3D pesado en el servidor. Archivo central `remote-mcp/src/worker.mjs`; manual `remote-mcp/README.md`; despliegue opcional por workflow `deploy-mcp-cloud.yml`.
+
+**Estado pendiente:** configurar cuenta Cloudflare con autorización explícita del propietario, ejecutar manualmente el workflow y validar conector real desde el ChatGPT del usuario. No se ha creado ningún endpoint `workers.dev` con esta contribución. No afirmar conexión operativa con este chat hasta haber probado la herramienta. Es solo un prototipo de sesión con aprobación explícita y **no** sirve aún para uso público multiusuario: faltan OAuth 2.1, controles de abuso, identidad por usuario y auditoría persistente.

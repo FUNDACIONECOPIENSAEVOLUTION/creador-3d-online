@@ -181,3 +181,15 @@ Sin Tripo, Hunyuan, Meshy ni suscripciones obligatorias; software MIT con herram
 En el mismo campo de descripción también puedes escribir `mujer de ojos verdes, acuerpada, cabello negro largo y piel canela`. EcoBlend reconoce los atributos explícitos y crea una base humanoide con cambios visibles de color de ojos, cabello, piel y proporciones simples. El formato de ficha está en `src/character-spec.js` y la aplicación de rasgos en `src/character-appearance.js`. Estos cambios **son estilizados**, no un resultado humano hiperrealista ni ejecución real de MPFB2 en el navegador.
 
 Un agente autorizado puede acceder a `mcp_human_describe`, `mcp_human_create` y `mcp_human_update`. El motor general `mcp_asset_build` sigue siendo el camino para cualquier otro tipo de figura.
+
+---
+
+## Prueba EcoBlend con ChatGPT MCP en la nube (v1.5 piloto)
+
+EcoBlend puede enlazar su escena con un servidor remoto MCP sobre HTTPS sin ejecutar un servidor Node en el PC. El prototipo incluye Cloudflare Workers y Durable Objects, salas privadas de 20 minutos, emparejamiento mediante clave secreta y confirmación manual para **cada** herramienta.
+
+**El servidor no está desplegado automáticamente solo por estar el código en GitHub.** El propietario debe configurar una cuenta Cloudflare y ejecutar el workflow manual de despliegue. La página no se conecta a ChatGPT hasta que se cree el MCP personalizado desde los Plugins de ChatGPT.
+
+**Guía de instalación completa, sin Node en el computador:** [remote-mcp/README.md](remote-mcp/README.md).
+
+Esta beta no ofrece OAuth, registro multiusuario ni aislamiento para liberar a desconocidos. No debe confundirse el emparejamiento temporal con una identidad segura a largo plazo; antes de ofrecer el servidor a la comunidad, implementar OAuth 2.1 y rate limiting. El editor web puede seguir utilizándose sin este servidor.

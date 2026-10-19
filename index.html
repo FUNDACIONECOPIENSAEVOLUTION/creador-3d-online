@@ -56,6 +56,23 @@
       <span>Puente MCP (Control & Visión IA)</span>
       <span style="color:var(--mcp-green)">JSON-RPC 2.0</span>
     </div>
+    <div class="mcp-container" id="remote-mcp-panel">
+      <div class="mcp-status"><strong>MCP Nube · ChatGPT</strong><span id="remote-state">Desconectado</span></div>
+      <label for="remote-mcp-base" style="font-size:11px;">Dirección HTTPS del servidor EcoBlend (Cloudflare)</label>
+      <input id="remote-mcp-base" type="url" placeholder="https://ecoblend-mcp.tu-cuenta.workers.dev" autocomplete="off" spellcheck="false" />
+      <label for="remote-pair-key" style="font-size:11px;">Clave privada de tu instalación (solo para abrir una sala)</label>
+      <input id="remote-pair-key" type="password" placeholder="Clave creada en Cloudflare; NO la envíes por chat" autocomplete="off" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+        <button class="mcp-btn" onclick="app.connectRemoteMCP()">Conectar nube</button>
+        <button class="mcp-btn" onclick="app.disconnectRemoteMCP()">Desconectar</button>
+      </div>
+      <label style="font-size:11px;">Sala temporal (20 minutos):</label>
+      <div style="display:flex;gap:5px;align-items:center;">
+        <code id="remote-room" style="font-size:10px;overflow-wrap:anywhere;flex:1;">—</code>
+        <button class="mcp-btn" onclick="app.copyRemoteRoom()" aria-label="Copiar identificador de sala">Copiar</button>
+      </div>
+      <p style="font-size:10px;line-height:1.45;margin:4px 0;color:var(--text-muted);">Comparte la sala solamente con la IA que estás probando. EcoBlend solicitará tu autorización antes de revelar datos o aplicar cada modificación. No cierres esta pestaña durante el trabajo.</p>
+    </div>
     <div class="mcp-container">
       <div class="mcp-status">
         <span><span class="status-led" id="ws-led"></span><code>window.MCP_BRIDGE</code></span>
