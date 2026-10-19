@@ -65,7 +65,11 @@ test('Solo el propietario con clave larga puede crear una sala temporal',async()
  }}),authorized);
  assert.equal(good.status,200);
  const data=await good.json();
- assert.match(data.room,/^[0-9a-f-]{36}$/i);
+ assert.match(data.room,/^[0-9a-f-]{36}\.\d{13}\.[a-zA-Z0-9_-]{43}$/i);
+ const forged=data.room.slice(0,-1)+(data.room.at(-1)==='x'?'y':'x');
+ const rejected=await post('tools/call',7,{name:'ecoblend_scene',arguments:{room:forged}});
+ assert.equal(rejected.data.result.isError,true);
+ assert.match(rejected.data.result.content[0].text,/firma inválida|caducada/i);
  assert.match(data.ticket,/^\d{13}\.[a-zA-Z0-9_-]{43}$/);
  const invalidTicket=await worker.fetch(new Request('https://ecoblend.example/ws?room='+data.room+'&ticket=invalid',{
    headers:{Origin:'https://fundacionecopiensaevolution.github.io',Upgrade:'websocket'}
