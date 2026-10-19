@@ -36,6 +36,7 @@ export class AnimationEditor {
     const action = { name: name.trim(), duration, root, channels: new Map() };
     this.drafts.set(root.uuid, action);
     this.studio.characterWorkflow.ensureModel(root);
+    this.studio.characterWorkflow.stopForEdit(root);
     this.playhead = 0;
     this.updateControls();
     return this.inspect();
@@ -143,6 +144,8 @@ export class AnimationEditor {
     if (!node || node.isBone || node.isSkinnedMesh || node.name === 'Studio_Floor')
       throw new Error('Selecciona una pieza rígida independiente (malla o grupo).');
     const root = this.rootFor(node);
+    if (node === root && this.studio.characterWorkflow.getClipsFor(root).length)
+      throw new Error('No puedes reemplazar la raíz de un modelo con clips existentes; selecciona una pieza hija.');
     const parent = node.parent;
     if (!parent) throw new Error('El objeto no tiene padre.');
     const world = new THREE.Vector3();
