@@ -24,7 +24,7 @@ const ALLOWED_ORIGINS = new Set([
 const MAX_MESSAGE = 12 * 1024 * 1024;
 
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
-  process.stderr.write('[NeoBlender] Puerto MCP_WS_PORT inválido.\n');
+  process.stderr.write('[EcoBlend] Puerto MCP_WS_PORT inválido.\n');
   process.exit(1);
 }
 
@@ -34,6 +34,33 @@ const tools = [
   { name: 'mcp_capture_quad_view', description: 'Capturar cuatro vistas de la escena (PNG).', inputSchema: { type: 'object', properties: {} } },
   { name: 'mcp_get_creation_brief', description: 'Obtener prompt, destino y requisitos del personaje solicitados en la web.', inputSchema: { type: 'object', properties: {} } },
   { name: 'mcp_get_reference_image', description: 'Recibir imagen de referencia previamente cargada por el usuario (JPEG).', inputSchema: { type: 'object', properties: {} } },
+  {
+    name: 'mcp_asset_validate',
+    description: 'Validar plano 3D de partes de cualquier figura. No ejecuta código.',
+    inputSchema: {
+      type: 'object', required: ['blueprint'], properties: {
+        blueprint: { type: 'object', description: 'EcoBlend ecoblend.asset.v1, nombre, categoría y partes' }
+      }
+    }
+  },
+  {
+    name: 'mcp_asset_build',
+    description: 'Construir geometría editable de criaturas, antropomorfos, objetos, vehículos o escenas desde un plano validado.',
+    inputSchema: {
+      type: 'object', required: ['blueprint'], properties: {
+        blueprint: { type: 'object', description: 'Plano 3D declarativo generado por agente autorizado (no JavaScript)' }
+      }
+    }
+  },
+  {
+    name: 'mcp_asset_preset',
+    description: 'Crear una plantilla web abierta en ausencia de un plano detallado.',
+    inputSchema: {
+      type: 'object', required: ['id'],properties: {
+        id:{type:'string',enum:['anthro-cat','dragon','robot','tree','chair','vehicle','castle']}
+      }
+    }
+  },
   {
     name: 'mcp_character_create',
     description: 'Crear base humanoide o ángel articulado mediante geometría local libre, sin suscripciones ni modelos descargables.',
@@ -169,13 +196,13 @@ const wss = new WebSocketServer({
   host: HOST, port: PORT, maxPayload: MAX_MESSAGE,
   verifyClient: (info, done) => {
     const accepted = ALLOWED_ORIGINS.has(info.origin);
-    if (!accepted) process.stderr.write('[NeoBlender] WebSocket Origin no autorizado: ' + String(info.origin) + '\n');
+    if (!accepted) process.stderr.write('[EcoBlend] WebSocket Origin no autorizado: ' + String(info.origin) + '\n');
     done(accepted, accepted ? 200 : 403, accepted ? 'OK' : 'Origen no autorizado');
   }
 });
 
-wss.on('listening', () => process.stderr.write('[NeoBlender] WebSocket local escuchando en ws://' + HOST + ':' + PORT + '\n'));
-wss.on('error', error => process.stderr.write('[NeoBlender] WS error: ' + error.message + '\n'));
+wss.on('listening', () => process.stderr.write('[EcoBlend] WebSocket local escuchando en ws://' + HOST + ':' + PORT + '\n'));
+wss.on('error', error => process.stderr.write('[EcoBlend] WS error: ' + error.message + '\n'));
 
 function abortPending(reason) {
   for (const [, operation] of pending) {
@@ -191,7 +218,7 @@ wss.on('connection', socket => {
     return;
   }
   browser = socket;
-  process.stderr.write('[NeoBlender] Visor conectado\n');
+  process.stderr.write('[EcoBlend] Visor conectado\n');
   socket.on('message', message => {
     try {
       const response = JSON.parse(message.toString());
@@ -201,7 +228,7 @@ wss.on('connection', socket => {
       clearTimeout(op.timer);
       op.resolve(response);
     } catch (error) {
-      process.stderr.write('[NeoBlender] Respuesta WS inválida: ' + error.message + '\n');
+      process.stderr.write('[EcoBlend] Respuesta WS inválida: ' + error.message + '\n');
     }
   });
   socket.on('close', () => {
@@ -247,7 +274,7 @@ async function handle(request) {
       reply(request.id, {
         protocolVersion: '2024-11-05',
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'creador-3d-online-mcp', version: '1.3.0' }
+        serverInfo: { name: 'ecoblend-mcp', version: '1.4.0' }
       }); return;
     }
     if (method === 'ping') { reply(request.id, {}); return; }
@@ -259,6 +286,15 @@ async function handle(request) {
     if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Argumentos inválidos.');
     if (name === 'mcp_spawn_pbr_mesh' && args.type && !['box', 'sphere', 'cylinder', 'torusknot'].includes(args.type))
       throw new Error('Geometría no permitida.');
+    if (name === 'mcp_asset_preset' && !['anthro-cat','dragon','robot','tree','chair','vehicle','castle'].includes(args.id))
+      throw new Error('Plantilla de figura desconocida.');
+    if (name === 'mcp_asset_validate' || name === 'mcp_asset_build') {
+      const blueprint = args.blueprint;
+      if (!blueprint || typeof blueprint !== 'object' || Array.isArray(blueprint) ||
+          !Array.isArray(blueprint.parts) || blueprint.parts.length > 120 ||
+          JSON.stringify(blueprint).length > 128*1024)
+        throw new Error('Plano EcoBlend ausente o supera los límites de seguridad.');
+    }
     if (name === 'mcp_character_create' && !['humanoid', 'angel'].includes(args.type))
       throw new Error('Plantilla de personaje no permitida.');
     if (name === 'mcp_set_quality' && !['low', 'balanced', 'high'].includes(args.profile))
@@ -306,5 +342,5 @@ async function handle(request) {
 readline.createInterface({ input: process.stdin, crlfDelay: Infinity }).on('line', line => {
   if (!line.trim() || line.length > 256 * 1024) return;
   try { void handle(JSON.parse(line)); }
-  catch (error) { process.stderr.write('[NeoBlender] JSON stdio inválido: ' + error.message + '\n'); }
+  catch (error) { process.stderr.write('[EcoBlend] JSON stdio inválido: ' + error.message + '\n'); }
 });
