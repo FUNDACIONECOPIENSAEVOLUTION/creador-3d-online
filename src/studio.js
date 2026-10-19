@@ -597,6 +597,11 @@ import * as THREE from 'three';
         this.setStatus('Creado '+object.name+' ('+metadata.parts+' partes). Se puede animar y exportar en GLB.');
         return {name:object.name,uuid:object.uuid,...metadata};
       }
+      buildAssetFromPrompt() {
+        try { return this.buildAssetFromDescription(document.getElementById('character-prompt').value); }
+        catch (error) { this.setStatus('Descripción: ' + error.message); return {error:error.message}; }
+      }
+
       buildAssetFromDescription(description) {
         const id = matchPreset(description);
         if (!id) throw new Error('La descripción requiere que una IA proponga un plano de piezas, o construirlo manualmente. Ejemplos disponibles: gato antropomorfo, dragón, robot, silla, árbol, vehículo, torre.');
