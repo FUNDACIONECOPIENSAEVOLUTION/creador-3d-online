@@ -57,7 +57,7 @@ export class CharacterWorkflow {
       rigRequired: true,
       animationDesired: true,
       referenceImageAvailable: !!this.imageDataUrl,
-      instructions: 'Crear en una herramienta 3D autorizada, revisar anatomía, exportar GLB con rig y clips; importar el GLB final en el estudio web.',
+      instructions: 'Crear usando herramientas propias de NeoBlender y/o Blender+MPFB libre, revisar anatomía, rig y clips; exportar GLB. Evitar APIs comerciales de pago.',
       limitations: 'Este visor no genera una malla humana a partir de una imagen por sí mismo.'
     };
   }
@@ -80,27 +80,57 @@ export class CharacterWorkflow {
     this.studio.setStatus('Encargo descargado: imagen + instrucciones. También está disponible por MCP local.');
   }
 
-  registerImportedModel(root, clips = []) {
-    const names = clips.map((clip) => clip.name).filter(Boolean);
-    if (clips.length) {
-      const mixer = new THREE.AnimationMixer(root);
-      this.animationSets.set(root.uuid, { root, clips, mixer });
-      this.active = root.uuid;
-    } else {
-      this.active = null;
+  ensureModel(root) {
+    if (!root) throw new Error('Selecciona un modelo antes de animarlo.');
+    let set = this.animationSets.get(root.uuid);
+    if (!set) {
+      set = { root, clips: [], mixer: new THREE.AnimationMixer(root) };
+      this.animationSets.set(root.uuid, set);
     }
+    this.active = root.uuid;
+    return set;
+  }
+
+  registerImportedModel(root, clips = []) {
+    const data = this.ensureModel(root);
+    data.clips = [...clips];
     this.populateClips();
     this.studio.setStatus(
-      clips.length
-        ? 'Modelo importado con ' + clips.length + ' animaciones: ' + names.join(', ')
-        : 'Modelo importado sin clips de animación. Para movimiento real se necesita un GLB riggeado con animaciones.'
+      data.clips.length
+        ? 'Modelo cargado con ' + data.clips.length + ' clips editables mediante nuevos fotogramas.'
+        : 'Modelo sin clips: puedes crear acciones con fotogramas clave sobre sus piezas o huesos.'
     );
+  }
+
+  registerAuthoredClip(root, clip) {
+    const data = this.ensureModel(root);
+    const previous = data.clips.findIndex(item => item.name === clip.name);
+    data.mixer.stopAllAction();
+    if (previous >= 0) {
+      data.mixer.uncacheClip(data.clips[previous]);
+      data.clips.splice(previous, 1, clip);
+    } else data.clips.push(clip);
+    this.populateClips();
+    this.studio.setStatus('Animación creada localmente: ' + clip.name + '. Exporta GLB para conservarla.');
+  }
+
+  getClipsFor(root) {
+    return this.animationSets.get(root.uuid)?.clips || [];
+  }
+
+  stopForEdit(root) {
+    const data = this.animationSets.get(root.uuid);
+    if (data) {
+      data.mixer.stopAllAction();
+      data.mixer.timeScale = 1;
+    }
   }
 
   selectModel(obj) {
     let parent = obj;
     while (parent && !this.animationSets.has(parent.uuid)) parent = parent.parent;
     if (parent) this.active = parent.uuid;
+    else this.active = null;
     this.populateClips();
   }
 
@@ -109,7 +139,7 @@ export class CharacterWorkflow {
     select.replaceChildren();
     const data = this.animationSets.get(this.active);
     if (!data || !data.clips.length) {
-      const option = new Option('Sin animaciones en el modelo', '');
+      const option = new Option('Sin clips: crea una acción nueva', '');
       select.add(option);
       return;
     }
@@ -127,6 +157,15 @@ export class CharacterWorkflow {
     action.reset().play();
     data.mixer.timeScale = Number(document.getElementById('animation-speed').value);
     this.studio.setStatus('Reproduciendo: ' + clip.name);
+  }
+
+  seek(time) {
+    const data = this.animationSets.get(this.active);
+    if (!data) return;
+    const speed = data.mixer.timeScale;
+    data.mixer.timeScale = 1;
+    data.mixer.setTime(Math.max(0, Number(time) || 0));
+    data.mixer.timeScale = speed;
   }
 
   pause() {

@@ -1,6 +1,6 @@
-# Creador 3D Online · Laboratorio de personajes 1.2 (rama de desarrollo)
+# Creador 3D Online · Estudio de animación libre 1.3
 
-Estudio web **gratuito** basado en Three.js r160 para editar modelos GLB, previsualizar animaciones e intercambiar información con un agente MCP local autorizado. La base pública original se conserva en `main` hasta revisar esta rama.
+Estudio web **gratuito** basado en Three.js r160 para editar modelos GLB, previsualizar animaciones e intercambiar información con un agente MCP local autorizado. Los cambios se desarrollan y comprueban antes de integrarse en la rama pública `main`.
 
 ## Editor web y límites reales
 
@@ -53,3 +53,105 @@ npm run check
 ```
 
 La bitácora de agentes está en `MCP_AI_GUIDE.md`. Cada modificación requiere registrar cambios, pruebas efectivas y pendientes. Las operaciones de escultura avanzada, generación 2D→3D, humano a partir de foto y animación de batalla creada automáticamente **son trabajo futuro**, no funciones entregadas en 1.2.
+
+---
+
+## Versión 1.3 — Animar modelos 3D importados gratis (sin Tripo/Hunyuan/Meshy)
+
+Esta actualización convierte NeoBlender de un simple reproductor de animaciones en un editor básico de **poses y fotogramas clave** usando Three.js, sin llamadas a servicios de generación de pago.
+
+**Formatos importados:** GLB/GLTF autocontenidos, OBJ y FBX. Los OBJ generalmente no contienen rigs ni animaciones; FBX puede incluir esqueletos y clips (dependiendo del archivo). Archivos con texturas externas requieren empaquetar los recursos o conversiones posteriores.
+
+### Cómo animar un GLB con esqueleto
+
+1. Importa el modelo GLB o FBX y abre **Animación libre · Huesos y fotogramas clave**.
+2. Marca **Mostrar huesos en Outliner**. Selecciona un hueso (por ejemplo, brazo o antebrazo).
+3. Da nombre a la acción (Ataque, Defensa, Caminar), define duración y pulsa **Crear acción**.
+4. En tiempo 0, coloca el hueso en la pose inicial y pulsa **Registrar pose**.
+5. Mueve el control de tiempo hasta, por ejemplo, 0.5 segundos, rota el hueso y pulsa **Registrar pose**.
+6. Sigue registrando las poses necesarias y pulsa **Guardar clip**.
+7. En la lista de clips del modelo selecciona el nuevo movimiento para reproducirlo.
+8. Pulsa **Exportar GLB** y comprueba que el modelo conserva la animación en otro visor.
+
+### Cómo animar un modelo sin esqueleto
+
+- Si es una sola malla: genera los presets gratuitos **Reposo**, **Ataque**, **Defensa**, **Golpe** o **Derrota** que mueven el objeto entero.
+- Si tiene piezas independientes: selecciona una extremidad, escribe la coordenada mundial de su articulación y pulsa **Crear pivote**. Selecciona ese pivote y registra sus poses.
+- Si el cuerpo es una sola malla sin huesos **no se pueden doblar brazos de forma anatómica** con pivotes. Necesita segmentación, armature y skinning; el rigging semiautomático con pesos por vértice es la siguiente fase pendiente. Esta versión no promete que cualquier figura pueda articularse de inmediato.
+
+### Acceso por IA mediante herramientas propias
+
+El MCP local ofrece herramientas de lectura y creación tipada:
+`mcp_animation_inspect`,
+`mcp_animation_create`,
+`mcp_animation_keyframe`,
+`mcp_animation_commit`,
+`mcp_animation_preset`,
+`mcp_animation_pivot` y
+`mcp_animation_play`.
+
+Una IA con cliente MCP local configurado puede inspeccionar los huesos, crear acciones, asignar poses numéricas, verlas y exportarlas mediante la interfaz. **Este ChatGPT todavía no tiene acceso directo a tu navegador local desde la nube**. No exponemos evaluación remota de JavaScript.
+
+### Próxima etapa de código libre
+
+1. Probar exportación e importación de GLB con animaciones de huesos reales.
+2. Undo/Redo, guardado de proyectos y exploración de mallas.
+3. Rigging humanoide guiado sobre mallas sin esqueleto: ubicar articulaciones, generar armature, asignar pesos con visualización y correcciones.
+4. Timeline multicanal, curvas de interpolación, biblioteca abierta de movimiento.
+5. Optimización de texturas, LOD y GLB <=15 MiB según medida real.
+
+No integra APIs ni suscripciones obligatorias de Tripo, Hunyuan3D, Meshy ni otros generadores 3D.
+
+---
+
+## NeoBlender Web-first: tecnología libre para equipos modestos (1.3)
+
+**Regla de accesibilidad:** abrir https://fundacionecopiensaevolution.github.io/creador-3d-online/ debe permitir modelar y animar figuras sin instalar software adicional, sin crear cuenta y sin pagar suscripciones. El MCP local es opcional para asistentes externos de escritorio; nunca es necesario para los botones del visor.
+
+### Prueba rápida: crear un ángel sin descargar ningún modelo
+
+1. Abre el editor actualizado en un navegador con WebGL y selecciona **Ligero** en Rendimiento.
+2. Pulsa **Crear guardián alado** en **Personajes creados en la web — Gratis**.
+3. El modelo aparece con pivotes en hombros, codos, muñecas, dedos, caderas, rodillas y alas.
+4. En **Animación libre**, selecciona una articulación en el Outliner, crea una acción, rota la articulación en dos momentos y registra las poses.
+5. Guarda el clip y selecciónalo para reproducirlo.
+6. Usa **Exportar personaje .GLB** para descargar únicamente el personaje con sus clips.
+
+Alternativamente, **Crear humano articulado** genera una base sin alas. Ambos se construyen proceduralmente en JavaScript+Three.js con geometría de bajo costo y materiales estándar PBR. Son **maniquíes estilizados de partida**, no humanos hiperrealistas ni reconstrucciones IA de una fotografía. Su geometría se puede reproducir gratis sin servidores ni pesos de modelo IA.
+
+### Importar tus propios modelos
+
+GLB/GLTF, OBJ y FBX pueden abrirse localmente. Las mallas con esqueleto y pesos se pueden posar y animar por huesos; las piezas independientes pueden articularse mediante pivotes. **Una única malla sin esqueleto no puede doblar los brazos de manera anatómica** hasta crear un rig con pesos. Algunas importaciones FBX/OBJ necesitarán empacar texturas o materiales antes de lograr fidelidad de apariencia.
+
+### Modo Ligero y calidad
+
+En equipos modestos el perfil **Ligero** limita el dibujo a 30 cuadros por segundo, la relación de píxeles a 1 y desactiva sombras en tiempo real. Esto **no elimina por completo la carga de GPU**, ni garantiza un rendimiento determinado en cualquier teléfono. Los perfiles Equilibrado y Visual son opcionales.
+
+### Qué sigue pendiente y cómo pensamos resolverlo sin cobrar
+
+- Manos/cara y cuerpos con mejor malla, topología y materiales, mediante edición y plantillas abiertas verificadas.
+- Autorrig guiado de malla única (marcadores de articulación, huesos y pintura/propagación de pesos), inicialmente para humanoides estándar.
+- Biblioteca comunitaria de mallas y animaciones de licencia libre compatible: licencias y procedencia registradas por asset.
+- Animación por curvas (timeline), edición no destructiva, deshacer/rehacer y proyectos guardados.
+- Texturas PBR optimizadas, normal mapping, LOD y GLB pequeño para realidad aumentada.
+- Asistencia IA desde chats mediante un puente seguro compatible; cualquier nube compartida requiere límites de infraestructura y presupuesto.
+
+**No se incluyen Tripo, Hunyuan3D, Meshy ni APIs de pago en el editor.** La IA controla herramientas de código, no ejecuta un modelo generativo enorme en los computadores de los usuarios. Los artefactos originales producidos por la herramienta de geometría procedural se ofrecen para libre uso; verificar licencias de modelos externos importados.
+
+---
+
+## Comandos guiados gratuitos en español
+
+El usuario puede escribir instrucciones básicas en el panel **Comandos guiados en español** y pulsar **Aplicar instrucciones disponibles**:
+
+- `crea un ángel con movimiento de ataque y modo ligero`
+- `crea humanoide`
+- `modo equilibrado`
+- `defensa` (con el personaje seleccionado)
+- `descarga personaje GLB`
+
+El intérprete ubicado en `src/free-command-assistant.js` usa reglas estrictas **sin servidores, modelos de IA ni pagos**. Cuando no entiende una instrucción, lo avisa y no pretende haber generado una figura compleja a partir del texto. La futura integración de chats de IA debe utilizar las herramientas MCP autorizadas, no evaluación de código remoto.
+
+## Licencia y colaboración
+
+Este repositorio incluye `LICENSE` con la licencia MIT para su código, de modo que otras personas puedan copiarlo, aprender, modificarlo y compartir mejoras conservando el aviso de licencia. Esta licencia **no cambia las licencias de los archivos importados por el usuario**, ni las de las dependencias de terceros. Aportar mejoras preferentemente mediante un Pull Request y documentar los cambios en `MCP_AI_GUIDE.md`.

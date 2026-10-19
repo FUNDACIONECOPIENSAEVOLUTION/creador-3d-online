@@ -35,6 +35,99 @@ const tools = [
   { name: 'mcp_get_creation_brief', description: 'Obtener prompt, destino y requisitos del personaje solicitados en la web.', inputSchema: { type: 'object', properties: {} } },
   { name: 'mcp_get_reference_image', description: 'Recibir imagen de referencia previamente cargada por el usuario (JPEG).', inputSchema: { type: 'object', properties: {} } },
   {
+    name: 'mcp_character_create',
+    description: 'Crear base humanoide o ángel articulado mediante geometría local libre, sin suscripciones ni modelos descargables.',
+    inputSchema: {
+      type: 'object',
+      required: ['type'],
+      properties: { type: { type: 'string', enum: ['humanoid', 'angel'] } }
+    }
+  },
+  {
+    name: 'mcp_set_quality',
+    description: 'Seleccionar modo ligero/equilibrado/visual según capacidad gráfica del navegador.',
+    inputSchema: {
+      type: 'object',
+      required: ['profile'],
+      properties: { profile: { type: 'string', enum: ['low', 'balanced', 'high'] } }
+    }
+  },
+  {
+    name: 'mcp_animation_inspect',
+    description: 'Inspeccionar huesos, clips y fotogramas de la pieza o personaje seleccionado.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'mcp_animation_create',
+    description: 'Crear nueva acción para el modelo seleccionado o el rootUuid indicado.',
+    inputSchema: {
+      type: 'object',
+      required: ['name', 'duration'],
+      properties: {
+        name: { type: 'string', minLength: 1, maxLength: 80 },
+        duration: { type: 'number', exclusiveMinimum: 0, maximum: 60 },
+        rootUuid: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'mcp_animation_keyframe',
+    description: 'Posicionar un hueso o pieza por UUID y registrar pose animada en segundos.',
+    inputSchema: {
+      type: 'object',
+      required: ['uuid', 'time'],
+      properties: {
+        uuid: { type: 'string' },
+        time: { type: 'number', minimum: 0, maximum: 60 },
+        position: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+        rotationDeg: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+        scale: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 }
+      }
+    }
+  },
+  {
+    name: 'mcp_animation_commit',
+    description: 'Convertir poses a un AnimationClip compatible con GLB.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'mcp_animation_preset',
+    description: 'Animar pieza entera con preset rigido idle/attack/defend/hit/defeat.',
+    inputSchema: {
+      type: 'object',
+      required: ['kind'],
+      properties: {
+        kind: { type: 'string', enum: ['idle', 'attack', 'defend', 'hit', 'defeat'] },
+        rootUuid: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'mcp_animation_play',
+    description: 'Previsualizar clip existente y, opcionalmente, colocarlo en un instante concreto.',
+    inputSchema: {
+      type: 'object',
+      required: ['name'],
+      properties: {
+        name: { type: 'string' }, rootUuid: { type: 'string' },
+        time: { type: 'number', minimum: 0, maximum: 60 }
+      }
+    }
+  },
+  {
+    name: 'mcp_animation_pivot',
+    description: 'Crear pivote para malla separada; no asigna skinning automático.',
+    inputSchema: {
+      type: 'object',
+      required: ['uuid', 'worldPosition'],
+      properties: {
+        uuid: { type: 'string' },
+        name: { type: 'string', maxLength: 80 },
+        worldPosition: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 }
+      }
+    }
+  },
+  {
     name: 'mcp_spawn_pbr_mesh',
     description: 'Crear primitiva geométrica con material PBR. No crea automáticamente humanos realistas.',
     inputSchema: {
@@ -154,7 +247,7 @@ async function handle(request) {
       reply(request.id, {
         protocolVersion: '2024-11-05',
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'creador-3d-online-mcp', version: '1.2.0' }
+        serverInfo: { name: 'creador-3d-online-mcp', version: '1.3.0' }
       }); return;
     }
     if (method === 'ping') { reply(request.id, {}); return; }
@@ -166,6 +259,29 @@ async function handle(request) {
     if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Argumentos inválidos.');
     if (name === 'mcp_spawn_pbr_mesh' && args.type && !['box', 'sphere', 'cylinder', 'torusknot'].includes(args.type))
       throw new Error('Geometría no permitida.');
+    if (name === 'mcp_character_create' && !['humanoid', 'angel'].includes(args.type))
+      throw new Error('Plantilla de personaje no permitida.');
+    if (name === 'mcp_set_quality' && !['low', 'balanced', 'high'].includes(args.profile))
+      throw new Error('Perfil gráfico no permitido.');
+
+    if (name === 'mcp_animation_create' &&
+        (typeof args.name !== 'string' || !args.name.trim() || args.name.length > 80 ||
+         typeof args.duration !== 'number' || !Number.isFinite(args.duration) || args.duration <= 0 || args.duration > 60))
+      throw new Error('Nombre o duración no válidos para animación.');
+    if (name === 'mcp_animation_keyframe' && (
+        typeof args.uuid !== 'string' ||
+        typeof args.time !== 'number' || !Number.isFinite(args.time) || args.time < 0 || args.time > 60 ||
+        ['position', 'rotationDeg', 'scale'].some(key => args[key] !== undefined &&
+          (!Array.isArray(args[key]) || args[key].length !== 3 || !args[key].every(Number.isFinite)))))
+      throw new Error('Fotograma inválido: UUID, tiempo o vectores.');
+    if (name === 'mcp_animation_preset' && !['idle', 'attack', 'defend', 'hit', 'defeat'].includes(args.kind))
+      throw new Error('Preset no permitido.');
+    if (name === 'mcp_animation_pivot' && (
+        typeof args.uuid !== 'string' ||
+        !Array.isArray(args.worldPosition) || args.worldPosition.length !== 3 ||
+        !args.worldPosition.every(Number.isFinite)))
+      throw new Error('Pivote no válido.');
+
     const response = await forward(name, args);
     if (response.error) {
       reply(request.id, { content: [{ type: 'text', text: response.error.message }], isError: true });

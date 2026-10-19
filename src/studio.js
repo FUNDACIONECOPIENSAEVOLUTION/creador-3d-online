@@ -4,7 +4,12 @@ import * as THREE from 'three';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+    import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
     import { CharacterWorkflow } from './character-workflow.js';
+    import { AnimationEditor } from './animation-editor.js';
+    import { createFreeCharacter } from './procedural-character.js';
+    import { runFreeCommand } from './free-command-assistant.js';
 
     class Creador3DOnlineStudio {
       constructor() {
@@ -14,6 +19,9 @@ import * as THREE from 'three';
         this.ws = null;
         this.aiActionHistory = [];
         this.characterWorkflow = new CharacterWorkflow(this);
+        this.animationEditor = new AnimationEditor(this);
+        this.qualityProfile = 'low'; // Iniciar siempre en modo económico; el usuario puede aumentar la calidad.
+        this.lastRenderAt = 0;
 
         this.initEngine();
         this.initLightingAndHDRI();
@@ -21,6 +29,7 @@ import * as THREE from 'three';
         this.initDragAndDrop();
         this.initDefaultScene();
         this.initMCPBridge();
+        this.setQualityProfile(this.qualityProfile);
         this.animate();
       }
 
@@ -122,7 +131,7 @@ import * as THREE from 'three';
         this.container.addEventListener('drop', (e) => {
           e.preventDefault();
           const file = e.dataTransfer.files[0];
-          if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
+          if (file && (/\.(glb|gltf|obj|fbx)$/i.test(file.name))) {
             this.loadGLBFile(file);
           }
         });
@@ -142,7 +151,7 @@ import * as THREE from 'three';
         floor.name = 'Studio_Floor';
         this.registerMesh(floor, false);
 
-        this.addHyperRealisticAssembly();
+        // Escena inicial vacía y ligera: objetos PBR opcionales desde la barra de herramientas.
       }
 
       registerMesh(mesh, select = true) {
@@ -295,6 +304,7 @@ import * as THREE from 'three';
         this.transformControl.attach(obj);
         this.characterWorkflow.selectModel(obj);
         this.syncInspectorFromObject();
+        this.animationEditor.updateControls();
         this.refreshOutliner();
         this.setStatus(`Seleccionado: ${obj.name}`);
       }
@@ -302,6 +312,10 @@ import * as THREE from 'three';
       deleteSelected() {
         const target = this.selectedObject;
         if (!target || target.name === 'Studio_Floor') return;
+        if (target.isBone) {
+          this.setStatus('No se puede borrar un hueso de un rig importado: destruiría la deformación del personaje.');
+          return;
+        }
         this.transformControl.detach();
         this.characterWorkflow.forget(target);
         if (target.parent) target.parent.remove(target);
@@ -370,21 +384,23 @@ import * as THREE from 'three';
 
       updateSelectedMaterial() {
         const obj = this.selectedObject;
-        if (!obj || !obj.material) return;
-        obj.material.color.set(document.getElementById('mat-color').value);
-        obj.material.metalness = parseFloat(document.getElementById('mat-metalness').value);
-        obj.material.roughness = parseFloat(document.getElementById('mat-roughness').value);
-        obj.material.clearcoat = parseFloat(document.getElementById('mat-clearcoat').value);
-        obj.material.transmission = parseFloat(document.getElementById('mat-transmission').value);
-        obj.material.ior = parseFloat(document.getElementById('mat-ior').value);
-        obj.material.wireframe = document.getElementById('mat-wireframe').checked;
-        obj.material.needsUpdate = true;
+        if (!obj?.material) { this.setStatus('Selecciona una malla con material.'); return; }
+        const material = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+        if (!material?.color) return;
+        material.color.set(document.getElementById('mat-color').value);
+        material.metalness = parseFloat(document.getElementById('mat-metalness').value);
+        material.roughness = parseFloat(document.getElementById('mat-roughness').value);
+        material.clearcoat = parseFloat(document.getElementById('mat-clearcoat').value);
+        material.transmission = parseFloat(document.getElementById('mat-transmission').value);
+        material.ior = parseFloat(document.getElementById('mat-ior').value);
+        material.wireframe = document.getElementById('mat-wireframe').checked;
+        material.needsUpdate = true;
       }
 
       applyMaterialPreset(preset) {
         const obj = this.selectedObject;
-        if (!obj || !obj.material) return;
-        const m = obj.material;
+        const m = Array.isArray(obj?.material) ? obj.material[0] : obj?.material;
+        if (!m?.color) { this.setStatus('Selecciona una malla con material.'); return; }
         const presets = {
           gold:     { color: '#ffb703', metalness: 1.0, roughness: 0.08, clearcoat: 0.5, transmission: 0.0, ior: 1.5 },
           glass:    { color: '#ffffff', metalness: 0.0, roughness: 0.02, clearcoat: 1.0, transmission: 0.96, ior: 1.52 },
@@ -416,7 +432,7 @@ import * as THREE from 'three';
         let count = 0;
         for (const root of this.objects) {
           root.traverse((obj) => {
-            if (obj.isBone || obj.isLight || obj.isCamera) return;
+            if ((obj.isBone && !document.getElementById('show-bones')?.checked) || obj.isLight || obj.isCamera) return;
             if (count >= 450) return;
             count++;
             let depth = 0, parent = obj.parent;
@@ -448,39 +464,59 @@ import * as THREE from 'three';
       }
 
       loadGLBFile(file) {
-        if (!/\.(glb|gltf)$/i.test(file.name)) {
-          this.setStatus('Selecciona un archivo .glb o .gltf.');
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['glb', 'gltf', 'obj', 'fbx'].includes(ext)) {
+          this.setStatus('Importación disponible para .glb, .gltf, .obj y .fbx.');
           return;
         }
         if (file.size > 100 * 1024 * 1024) {
-          this.setStatus('El archivo excede el límite de carga de 100 MB.');
+          this.setStatus('El archivo supera el límite de 100 MB.');
           return;
         }
         const reader = new FileReader();
-        reader.onerror = () => this.setStatus('Error al leer el modelo local.');
-        reader.onload = (event) => {
-          const loader = new GLTFLoader();
-          loader.parse(event.target.result, '', (gltf) => {
-            const root = gltf.scene;
-            root.name = file.name.replace(/\.(glb|gltf)$/i, '');
-            this.registerMesh(root, true);
-            this.characterWorkflow.registerImportedModel(root, gltf.animations || []);
-            this.logAIAction('Importado GLB ' + root.name);
-          }, (error) => {
-            this.setStatus('Error al importar: ' + error.message + '. Usa GLB autocontenido; GLTF con texturas externas requiere empaquetarlo.');
-          });
+        reader.onerror = () => this.setStatus('Error leyendo el archivo importado.');
+        const imported = (root, clips = []) => {
+          root.name = file.name.replace(/\.(glb|gltf|obj|fbx)$/i, '');
+          this.registerMesh(root, true);
+          this.characterWorkflow.registerImportedModel(root, clips);
+          this.logAIAction('Importado ' + ext.toUpperCase() + ' ' + root.name);
+          this.setStatus('Importado: ' + root.name + '. Ahora puedes animarlo con poses y fotogramas.');
         };
-        reader.readAsArrayBuffer(file);
+        reader.onload = event => {
+          try {
+            if (ext === 'obj') {
+              imported(new OBJLoader().parse(event.target.result));
+            } else if (ext === 'fbx') {
+              const root = new FBXLoader().parse(event.target.result, '');
+              imported(root, root.animations || []);
+            } else {
+              new GLTFLoader().parse(event.target.result, '', gltf => {
+                imported(gltf.scene, gltf.animations || []);
+              }, err => this.setStatus('Error en GLB/GLTF: ' + err.message + '. Empaqueta texturas externas.'));
+            }
+          } catch (err) {
+            this.setStatus('No se pudo importar ' + ext.toUpperCase() + ': ' + err.message);
+          }
+        };
+        if (ext === 'obj') reader.readAsText(file);
+        else reader.readAsArrayBuffer(file);
       }
 
-      exportGLB() {
-        const roots = this.objects.filter(o => o.name !== 'Studio_Floor');
+      exportSelectedGLB() {
+        let root;
+        try { root = this.animationEditor.rootFor(this.selectedObject); }
+        catch (error) { this.setStatus('Selecciona un personaje antes de exportarlo: ' + error.message); return; }
+        this.exportGLB(root);
+      }
+
+      exportGLB(selectedRoot = null) {
+        const roots = selectedRoot ? [selectedRoot] : this.objects.filter(o => o.name !== 'Studio_Floor');
         if (!roots.length) {
           this.setStatus('No hay modelos para exportar.');
           return;
         }
         const exporter = new GLTFExporter();
-        const clips = this.characterWorkflow.getExportClips();
+        const clips = selectedRoot ? this.characterWorkflow.getClipsFor(selectedRoot) : this.characterWorkflow.getExportClips();
         exporter.parse(
           roots,
           (result) => {
@@ -488,7 +524,9 @@ import * as THREE from 'three';
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'modelo_creador3d_ecopiensa.glb';
+            link.download = selectedRoot
+              ? (selectedRoot.name.replace(/[^a-zA-Z0-9_-]/g, '_') || 'personaje') + '.glb'
+              : 'escena_completa_neoblender.glb';
             link.click();
             setTimeout(() => URL.revokeObjectURL(url), 3000);
             const sizeMB = (blob.size / 1048576).toFixed(2);
@@ -525,10 +563,113 @@ import * as THREE from 'three';
       resumeAnimation() { this.characterWorkflow.resume(); this.setStatus('Animación reanudada.'); }
       setAnimationSpeed(value) { this.characterWorkflow.setSpeed(value); }
 
+      submitFreeCommand() {
+        try {
+          const raw = document.getElementById('free-commands').value;
+          const result = runFreeCommand(this, raw);
+          document.getElementById('free-commands-feedback').textContent = result.join(' · ');
+          this.setStatus(result.join(' · '));
+        } catch (error) {
+          document.getElementById('free-commands-feedback').textContent = error.message;
+          this.setStatus('Comando guiado: ' + error.message);
+        }
+      }
+
+      createWebCharacter(type) {
+        try {
+          const { object, metadata } = createFreeCharacter({
+            type, detail: this.qualityProfile === 'low' ? 'low' : 'balanced'
+          });
+          const count = this.objects.filter(o => o.userData?.neoFreeCharacter).length;
+          object.position.x = count * 2.5 - 2;
+          this.registerMesh(object, true);
+          this.characterWorkflow.ensureModel(object);
+          this.logAIAction('Creado personaje libre desde navegador: ' + object.name);
+          this.setStatus('Creado ' + object.name + '. Articulaciones editables en Outliner; crea poses y exporta a GLB.');
+          return { name: object.name, uuid: object.uuid, ...metadata };
+        } catch (err) {
+          this.setStatus('No se pudo crear personaje: ' + err.message);
+          return { error: err.message };
+        }
+      }
+
+      setQualityProfile(value) {
+        const profiles = ['low', 'balanced', 'high'];
+        if (!profiles.includes(value)) throw new Error('Perfil de rendimiento no válido.');
+        this.qualityProfile = value;
+        const pixelCap = { low: 1, balanced: 1.5, high: 2 }[value];
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelCap));
+        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        const shadows = value !== 'low';
+        this.renderer.shadowMap.enabled = shadows;
+        this.keyLight.castShadow = shadows;
+        const selector = document.getElementById('quality-profile');
+        if (selector) selector.value = value;
+        this.setStatus(value === 'low'
+          ? 'Modo ligero: máximo 30 FPS, sombras desactivadas y resolución optimizada.'
+          : 'Calidad visual: ' + value);
+        return { qualityProfile: value, targetFps: value === 'low' ? 30 : 60 };
+      }
+
+      animationErrorSafe(action) {
+        try {
+          const response = action();
+          this.setStatus(typeof response === 'string' ? response : JSON.stringify(response));
+          this.refreshOutliner();
+          return response;
+        } catch (error) {
+          this.setStatus('Animación: ' + error.message);
+          return null;
+        }
+      }
+
+      createAnimationAction() {
+        return this.animationErrorSafe(() => this.animationEditor.createAction(
+          document.getElementById('new-animation-name').value,
+          Number(document.getElementById('new-animation-duration').value)
+        ));
+      }
+
+      addAnimationKeyframe() {
+        return this.animationErrorSafe(() => this.animationEditor.poseAndRecord({
+          time: Number(document.getElementById('keyframe-time').value)
+        }));
+      }
+
+      removeAnimationKeyframe() {
+        return this.animationErrorSafe(() => this.animationEditor.deleteFrame(
+          this.selectedObject?.uuid, Number(document.getElementById('keyframe-time').value)
+        ));
+      }
+
+      saveAnimationAction() {
+        return this.animationErrorSafe(() => this.animationEditor.saveAction());
+      }
+
+      createAnimationPreset() {
+        return this.animationErrorSafe(() => this.animationEditor.makeRigidPreset(
+          document.getElementById('animation-preset').value
+        ));
+      }
+
+      createArticulation() {
+        return this.animationErrorSafe(() => this.animationEditor.addPivot({
+          worldPosition: ['pivot-x', 'pivot-y', 'pivot-z'].map(id => Number(document.getElementById(id).value))
+        }));
+      }
+
+      previewAnimationTime(time) {
+        const t = Number(time);
+        if (!Number.isFinite(t)) return;
+        this.animationEditor.playhead = t;
+        this.characterWorkflow.seek(t);
+        this.animationEditor.updateControls();
+      }
+
       getSceneGraphData() {
         const objects = [];
         this.objects.forEach(root => root.traverse(o => {
-          if (objects.length >= 1500 || o.isBone) return;
+          if (objects.length >= 1500) return;
           const material = Array.isArray(o.material) ? o.material[0] : o.material;
           objects.push({
             uuid: o.uuid, parentUuid: o.parent?.uuid || null,
@@ -573,7 +714,7 @@ import * as THREE from 'three';
       initMCPBridge() {
         const self = this;
         window.MCP_BRIDGE = {
-          version: '1.2.0',
+          version: '1.3.0',
           repository: 'https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online',
           listTools() {
             return [
@@ -583,7 +724,16 @@ import * as THREE from 'three';
               { name: 'mcp_spawn_pbr_mesh', description: 'Crea una nueva malla 3D con shader físico MeshPhysicalMaterial.' },
               { name: 'mcp_modify_object', description: 'Modifica posición, escala o material de un objeto existente.' },
               { name: 'mcp_get_creation_brief', description: 'Lee el encargo de creación de personaje y los requisitos.' },
-              { name: 'mcp_get_reference_image', description: 'Obtiene la imagen de referencia en JPEG para análisis visual.' }
+              { name: 'mcp_get_reference_image', description: 'Obtiene la imagen de referencia en JPEG para análisis visual.' },
+              { name: 'mcp_animation_inspect', description: 'Inspecciona huesos, articulaciones, clips y fotogramas del modelo.' },
+              { name: 'mcp_animation_create', description: 'Crear una acción nueva para un modelo.' },
+              { name: 'mcp_animation_keyframe', description: 'Registrar fotograma clave de un hueso o pieza individual con tiempo, posición y rotación.' },
+              { name: 'mcp_animation_commit', description: 'Convertir los fotogramas a AnimationClip glTF exportable.' },
+              { name: 'mcp_animation_preset', description: 'Movimiento básico gratis de pieza completa.' },
+              { name: 'mcp_animation_play', description: 'Previsualizar un clip sobre el modelo; opcional instante de tiempo.' },
+              { name: 'mcp_character_create', description: 'Crear una base humana o un ángel articulado con geometría ligera en la propia web, sin IA de pago.' },
+              { name: 'mcp_set_quality', description: 'Cambiar perfil ligero, equilibrado o visual.' },
+              { name: 'mcp_animation_pivot', description: 'Crear articulación en una extremidad de malla separada.' }
             ];
           },
           getSceneGraph() {
@@ -695,6 +845,33 @@ import * as THREE from 'three';
               else if (method === 'mcp_capture_quad_view') result = this.captureQuadView();
               else if (method === 'mcp_get_creation_brief') result = self.characterWorkflow.getBrief();
               else if (method === 'mcp_get_reference_image') result = self.characterWorkflow.getImage();
+              else if (method === 'mcp_character_create') {
+                if (!['humanoid', 'angel'].includes(params.type)) throw new Error('Tipo de personaje desconocido.');
+                result = self.createWebCharacter(params.type);
+              }
+              else if (method === 'mcp_set_quality') result = self.setQualityProfile(params.profile);
+              else if (method === 'mcp_animation_inspect') result = self.animationEditor.inspect();
+              else if (method === 'mcp_animation_create') result = self.animationEditor.createAction(
+                params.name, params.duration,
+                params.rootUuid ? self.animationEditor.resolve(params.rootUuid) : self.selectedObject
+              );
+              else if (method === 'mcp_animation_keyframe') result = self.animationEditor.poseAndRecord(params);
+              else if (method === 'mcp_animation_commit') result = self.animationEditor.saveAction(params.rootUuid ? self.animationEditor.resolve(params.rootUuid) : self.selectedObject);
+              else if (method === 'mcp_animation_preset') result = self.animationEditor.makeRigidPreset(params.kind, params.rootUuid ? self.animationEditor.resolve(params.rootUuid) : self.selectedObject);
+              else if (method === 'mcp_animation_pivot') result = self.animationEditor.addPivot(params);
+              else if (method === 'mcp_animation_play') {
+                const root = params.rootUuid ? self.animationEditor.rootFor(self.animationEditor.resolve(params.rootUuid)) : self.animationEditor.rootFor(self.selectedObject);
+                self.characterWorkflow.selectModel(root);
+                const idx = self.characterWorkflow.getClipsFor(root).findIndex(clip => clip.name === params.name);
+                if (idx < 0) throw new Error('Clip no encontrado.');
+                self.characterWorkflow.play(String(idx));
+                if (params.time !== undefined) {
+                  if (typeof params.time !== 'number' || !Number.isFinite(params.time) || params.time < 0 || params.time > 60) throw new Error('Tiempo inválido.');
+                  self.characterWorkflow.seek(params.time);
+                  self.characterWorkflow.pause();
+                }
+                result = { clip: params.name, root: root.name, status: 'playing' };
+              }
               else if (method === 'mcp_spawn_pbr_mesh') {
                 const mesh = self.addPrimitive(params.type || 'sphere', params);
                 result = { status: 'created', name: mesh.name, uuid: mesh.uuid };
@@ -793,8 +970,10 @@ import * as THREE from 'three';
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
       }
 
-      animate() {
-        requestAnimationFrame(() => this.animate());
+      animate(timestamp = 0) {
+        requestAnimationFrame((time) => this.animate(time));
+        if (this.qualityProfile === 'low' && timestamp - this.lastRenderAt < 32) return;
+        this.lastRenderAt = timestamp;
         this.characterWorkflow.update();
         this.orbit.update();
         this.renderer.render(this.scene, this.camera);

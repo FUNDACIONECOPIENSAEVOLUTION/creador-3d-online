@@ -38,9 +38,10 @@
       <button onclick="app.subdivideSelected()" title="Suavizar o aumentar resolución">+ Subdividir</button>
       <button onclick="app.deleteSelected()" style="color:#fca5a5;">Borrar (Supr)</button>
       <div class="divider"></div>
-      <input type="file" id="glb-upload" accept=".glb,.gltf" style="display:none" onchange="app.importGLB(event)" />
-      <button onclick="document.getElementById('glb-upload').click()">Importar .GLB</button>
+      <input type="file" id="glb-upload" accept=".glb,.gltf,.obj,.fbx" style="display:none" onchange="app.importGLB(event)" />
+      <button onclick="document.getElementById('glb-upload').click()">Importar GLB / OBJ / FBX</button>
       <button onclick="app.exportGLB()">Exportar .GLB</button>
+       <button onclick="app.exportSelectedGLB()" title="Descarga únicamente el personaje o modelo seleccionado con sus clips">Exportar personaje .GLB</button>
     </div>
   </header>
 
@@ -84,7 +85,7 @@
   <main id="viewport-container">
     <div id="viewport-overlay">
       <strong>Creador 3D Online — PBR Studio (ACES Filmic)</strong><br/>
-      Click Izq: Seleccionar | Click Der / Alt+Click: Orbitar | Rueda: Zoom | Arrastra archivos <code>.GLB</code> al lienzo<br/>
+      Click Izq: Seleccionar | Click Der / Alt+Click: Orbitar | Rueda: Zoom | Arrastra archivos <code>.GLB / .OBJ / .FBX</code> al lienzo<br/>
       Atajos: <code>G</code> Mover | <code>R</code> Rotar | <code>S</code> Escalar | <code>D</code> Duplicar | <code>Supr</code> Eliminar
     </div>
   </main>
@@ -135,16 +136,82 @@
         <button onclick="app.downloadCreationBrief()">📦 Descargar encargo IA</button>
         <button onclick="app.mcpDumpScene()">🔍 Inspeccionar escena</button>
       </div>
-      <p class="character-note">La imagen y el encargo quedan en el navegador y pueden consultarse por el MCP local autorizado. Para generar la geometría hiperrealista se requiere Blender/MPFB o un generador 3D externo; este botón no promete fabricar un humano solo a partir de la imagen.</p>
+      <p class="character-note">La imagen y el encargo quedan en el navegador y pueden consultarse por el MCP local autorizado. Para generar la geometría hiperrealista se requiere Blender/MPFB o un trabajador Blender libre opcional; este botón no promete fabricar un humano solo a partir de la imagen.</p>
     </div>
     <div class="section-title">Movimiento de personajes GLB</div>
     <div class="prop-group">
-      <label for="animation-list">Clips de animación importados</label>
+      <label for="animation-list">Clips importados y creados aquí</label>
       <select class="animation-picker" id="animation-list" onchange="app.playAnimation(this.value)"><option>Sin animaciones en el modelo</option></select>
       <label for="animation-speed">Velocidad</label>
       <input id="animation-speed" type="range" min="0.25" max="2" value="1" step="0.25" oninput="app.setAnimationSpeed(this.value)" />
       <div class="character-actions"><button onclick="app.pauseAnimation()">⏸ Pausa</button><button onclick="app.resumeAnimation()">▶ Reanudar</button></div>
-      <p class="character-note">Reproduce clips reales de GLB riggeados (Idle, Attack, Defense, etc.). La plataforma no inventa automáticamente las animaciones si el archivo original no las contiene.</p>
+      <p class="character-note">Puedes importar un GLB con animaciones o crear clips nuevos con el editor de poses. Los modelos sin esqueleto pueden moverse como piezas rígidas; para doblar brazos necesitas huesos/pesos o extremidades separadas.</p>
+    </div>
+
+    <div class="section-title">Personajes creados en la web — Gratis</div>
+    <div class="prop-group" id="free-characters">
+      <p class="character-note">Sin instalar modelos IA ni suscripciones: se genera aquí mismo un humanoide articulado de geometría ligera. Es una base editable, no un humano fotorrealista terminado.</p>
+      <div class="character-actions">
+        <button onclick="app.createWebCharacter('humanoid')">🧍 Crear humano articulado</button>
+        <button onclick="app.createWebCharacter('angel')">🪽 Crear guardián alado</button>
+      </div>
+      <p class="character-note">Selecciona brazos, codos, dedos, piernas o alas en el Outliner y registra poses en la sección de animación. Descarga el resultado como GLB.</p>
+    </div>
+    <div class="section-title">Comandos guiados en español — sin IA de pago</div>
+    <div class="prop-group">
+      <label for="free-commands">¿Qué quieres hacer?</label>
+      <textarea id="free-commands" class="character-prompt" placeholder="Ejemplo: crea un ángel con movimiento de ataque y modo ligero"></textarea>
+      <button onclick="app.submitFreeCommand()">▶ Aplicar instrucciones disponibles</button>
+      <p id="free-commands-feedback" class="character-note" role="status">Acciones reconocidas: crear ángel o humanoide, ataque, defensa, reposo, golpe, derrota, modo ligero/equilibrado/visual y exportar personaje GLB.</p>
+      <p class="character-note">Esta opción utiliza reglas locales, no modelos de IA generativa. No transforma automáticamente una fotografía en un humano hiperrealista.</p>
+    </div>
+    <div class="section-title">Rendimiento · Para computadores modestos</div>
+    <div class="prop-group">
+      <label for="quality-profile">Calidad y consumo de GPU</label>
+      <select id="quality-profile" onchange="app.setQualityProfile(this.value)">
+        <option value="low">Ligero — 30 FPS, sin sombras, menos píxeles</option>
+        <option value="balanced">Equilibrado — sombras y 60 FPS</option>
+        <option value="high">Visual — hasta 2x píxeles y sombras</option>
+      </select>
+      <p class="character-note">Se aplica en tu navegador sin enviar nada al servidor. Cambia a Ligero si tu equipo se calienta o el movimiento no es fluido.</p>
+    </div>
+    <div class="section-title">Animación libre · Huesos y fotogramas clave</div>
+    <div class="prop-group" id="animation-authoring">
+      <label><input id="show-bones" type="checkbox" onchange="app.refreshOutliner()" /> Mostrar huesos en Outliner</label>
+      <p class="character-note">Selecciona un hueso o una pieza en la lista de objetos. Usa Rotar (R) y los controles de transformación para crear cada pose. Los huesos de un GLB riggeado mueven la piel según sus pesos.</p>
+      <label for="new-animation-name">Nueva acción</label>
+      <input id="new-animation-name" type="text" maxlength="80" value="Ataque_01" placeholder="Ataque_01, Defensa, Caminar" />
+      <label for="new-animation-duration">Duración de la acción (segundos)</label>
+      <input id="new-animation-duration" type="number" min="0.1" max="60" step="0.1" value="2" />
+      <div class="character-actions">
+        <button onclick="app.createAnimationAction()">+ Crear acción</button>
+        <button onclick="app.addAnimationKeyframe()">◆ Registrar pose</button>
+      </div>
+      <label for="keyframe-time">Tiempo del fotograma</label>
+      <input id="keyframe-time" type="range" min="0" max="2" step="0.05" value="0" oninput="app.previewAnimationTime(this.value)" />
+      <div class="character-actions">
+        <button onclick="app.removeAnimationKeyframe()">− Quitar pose</button>
+        <button onclick="app.saveAnimationAction()">💾 Guardar clip</button>
+      </div>
+      <p class="character-note" id="keyframe-state">Crea una acción para registrar poses</p>
+      <label for="animation-preset">Movimiento básico (personaje completo)</label>
+      <select id="animation-preset">
+        <option value="idle">Reposo (Idle)</option>
+        <option value="attack">Ataque (avance)</option>
+        <option value="defend">Defensa</option>
+        <option value="hit">Recibir golpe</option>
+        <option value="defeat">Derrota</option>
+      </select>
+      <button onclick="app.createAnimationPreset()">⚡ Generar movimiento inicial gratuito</button>
+      <p class="character-note">Los presets animan la pieza completa. Para brazos, alas y piernas por separado registra poses de huesos o articulaciones.</p>
+      <label>Articular una pieza sin esqueleto</label>
+      <div class="vec3-inputs">
+        <input id="pivot-x" type="number" value="0" step="0.1" aria-label="Articulación mundial X" />
+        <input id="pivot-y" type="number" value="1" step="0.1" aria-label="Articulación mundial Y" />
+        <input id="pivot-z" type="number" value="0" step="0.1" aria-label="Articulación mundial Z" />
+      </div>
+      <button onclick="app.createArticulation()">+ Crear pivote para pieza seleccionada</button>
+      <p class="character-note">El pivote permite doblar una extremidad que ya es una pieza independiente. Si todo el cuerpo es una sola malla sin huesos, primero deberá segmentarse o recibir pesos de skinning.</p>
     </div>
 
     <div class="section-title">Materiales Hiperrealistas & Texturas Procedurales</div>
