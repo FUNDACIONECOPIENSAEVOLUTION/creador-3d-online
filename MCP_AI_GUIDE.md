@@ -142,3 +142,23 @@ La versión 1.3 agrega `src/free-command-assistant.js`: instrucciones limitadas 
 El proyecto incluye `LICENSE` MIT para permitir reutilización del código; mantener créditos, respetar licencias separadas de assets importados y de librerías de terceros. La generación de figuras humanoides paramétricas procede de código propio y puede trabajar sin ninguna descarga adicional de modelos 3D.
 
 **Verificación exigida antes de publicar:** comprobar CI con pruebas de lenguaje natural, test de geometría procedural/GLB y navegador real. Ninguna prueba sintáctica garantiza calidad visual hiperrealista.
+
+---
+
+## 10. EcoBlend — sistema universal IA→3D, no exclusivo de humanos (versión 1.4)
+
+**Decisión de alcance confirmada:** el usuario necesita creación de humanos, antropomorfos, animales fantásticos, robots, objetos, entornos, arquitectura y toda figura representable mediante un plano de geometría, no solo MPFB2. MPFB2 será un adaptador opcional para cuerpos humanos; no debe condicionarse el producto a Blender, programas locales pesados o APIs comerciales.
+
+**Trabajo de ChatGPT GPT-6, rama `feature/ecoblend-character-descriptions-v14`:**
+
+- Marca pública **EcoBlend**, conservando el nombre del repositorio/URL actual.
+- `src/asset-blueprint.js`: validador y constructor de planos declarativos `ecoblend.asset.v1`, hasta 120 partes, mallas PBR o articulaciones, sin ejecutar JS externo.
+- `src/asset-presets.js`: plantillas gratuitas de gato antropomorfo, dragón, robot, árbol, silla, vehículo y torre.
+- `src/studio.js`: motor de creación por plano en navegador, controles de plantilla y operaciones MCP `mcp_asset_validate/build/preset`.
+- `src/character-workflow.js`: descripción e imagen pasan a ser referencia 3D genérica y no solo personaje humano.
+- `docs/IA_IMAGEN_A_3D_ECOBLEND.md`: procedimiento para IA multimodal: leer imagen y brief → analizar partes → construir plano → validarlo → construir → comparar capturas → animar → exportar GLB.
+- `src/character-spec.js`: esquema preparatorio especializado en humanos (sin activación automática del generador MPFB2).
+
+**Estado real:** infraestructura de mallas y objetos geométricos editables; **NO** recreación hiperrealista exacta de cualquier foto, ni una IA multimodal incluida en GitHub Pages. El usuario requiere conectar una IA con visión autorizada para analizar imagen y redactar el plano. La conexión desde este chat a localhost no es automática. Faltan construcción orgánica avanzada (curvas/mallas esculpidas), rigging de piel, mejores assets, retopología, fototexturizado, guardado e integración remota segura. Mantener la aprobación y pruebas antes de fusionar.
+
+**Registro:** toda IA deberá distinguir `implementado`, `probado` y `pendiente`. Nunca anunciar una capacidad automática de imagen a 3D cuando el código solo genera un borrador por partes.
