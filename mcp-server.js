@@ -35,6 +35,24 @@ const tools = [
   { name: 'mcp_get_creation_brief', description: 'Obtener prompt, destino y requisitos del personaje solicitados en la web.', inputSchema: { type: 'object', properties: {} } },
   { name: 'mcp_get_reference_image', description: 'Recibir imagen de referencia previamente cargada por el usuario (JPEG).', inputSchema: { type: 'object', properties: {} } },
   {
+    name: 'mcp_character_create',
+    description: 'Crear base humanoide o ángel articulado mediante geometría local libre, sin suscripciones ni modelos descargables.',
+    inputSchema: {
+      type: 'object',
+      required: ['type'],
+      properties: { type: { type: 'string', enum: ['humanoid', 'angel'] } }
+    }
+  },
+  {
+    name: 'mcp_set_quality',
+    description: 'Seleccionar modo ligero/equilibrado/visual según capacidad gráfica del navegador.',
+    inputSchema: {
+      type: 'object',
+      required: ['profile'],
+      properties: { profile: { type: 'string', enum: ['low', 'balanced', 'high'] } }
+    }
+  },
+  {
     name: 'mcp_animation_inspect',
     description: 'Inspeccionar huesos, clips y fotogramas de la pieza o personaje seleccionado.',
     inputSchema: { type: 'object', properties: {} }
@@ -241,6 +259,11 @@ async function handle(request) {
     if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Argumentos inválidos.');
     if (name === 'mcp_spawn_pbr_mesh' && args.type && !['box', 'sphere', 'cylinder', 'torusknot'].includes(args.type))
       throw new Error('Geometría no permitida.');
+    if (name === 'mcp_character_create' && !['humanoid', 'angel'].includes(args.type))
+      throw new Error('Plantilla de personaje no permitida.');
+    if (name === 'mcp_set_quality' && !['low', 'balanced', 'high'].includes(args.profile))
+      throw new Error('Perfil gráfico no permitido.');
+
     if (name === 'mcp_animation_create' &&
         (typeof args.name !== 'string' || !args.name.trim() || args.name.length > 80 ||
          typeof args.duration !== 'number' || !Number.isFinite(args.duration) || args.duration <= 0 || args.duration > 60))
