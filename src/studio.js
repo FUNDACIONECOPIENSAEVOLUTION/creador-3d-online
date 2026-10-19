@@ -1030,14 +1030,29 @@ import * as THREE from 'three';
         catch {this.setStatus('Copia manualmente el ID de sala.');}
       }
 
-      connectRemoteMCP(){
+      async connectRemoteMCP(){
         const status=document.getElementById('remote-state');
         try{
           if(this.remoteSocket)this.remoteSocket.close();
           const addr=new URL(document.getElementById('remote-mcp-base').value.trim());
           if(addr.protocol!=='https:'||addr.username||addr.password||addr.search||addr.hash)throw Error('Introduce una dirección base HTTPS confiable, sin parámetros.');
-          const room=crypto.randomUUID();
-          const endpoint=new URL('/ws',addr.origin);endpoint.protocol='wss:';endpoint.searchParams.set('room',room);
+          const keyField=document.getElementById('remote-pair-key');
+          const key=keyField.value;
+          if(key.length<24)throw Error('La clave de Cloudflare debe contener como mínimo 24 caracteres.');
+          status.textContent='Autorizando sala…';
+          const paired=await fetch(new URL('/pair',addr.origin),{
+            method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+            body:'{}',cache:'no-store'
+          });
+          keyField.value=''; // Nunca persistir credenciales en localStorage.
+          if(!paired.ok)throw Error('No se pudo autorizar la sala ('+paired.status+'). Verifica el servidor y tu clave.');
+          const pair=await paired.json();
+          const room=pair.room;
+          if(!/^[a-f0-9-]{36}$/i.test(room)||typeof pair.ticket!=='string')throw Error('Respuesta de emparejamiento inválida.');
+          const endpoint=new URL('/ws',addr.origin);
+          endpoint.protocol='wss:';
+          endpoint.searchParams.set('room',room);
+          endpoint.searchParams.set('ticket',pair.ticket);
           const socket=new WebSocket(endpoint);
           this.remoteSocket=socket;this.remoteRoomId=null;
           status.textContent='Conectando…';
