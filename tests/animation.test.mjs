@@ -20,6 +20,7 @@ function fixture() {
     logAIAction() {}, setStatus() {},
     characterWorkflow: {
       ensureModel() {},
+      stopForEdit() {},
       getClipsFor() { return clips; },
       registerAuthoredClip(_, clip) { clips.push(clip); }
     }
