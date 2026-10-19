@@ -34,7 +34,7 @@ function addHair(head,spec) {
   };
   piece('Cabello_Coronilla',[0,.117,.025],[.159,.104,.145]);
   if(spec.hairStyle==='medium'||spec.hairStyle==='long'){
-    const length=spec.hairStyle==='long'?.34:.19;
+    const length=spec.hairStyle === 'long' ? .34 : .19;
     piece('Melena_Izquierda',[-.138,-length/2,.045],[.065,.12+length,.083]);
     piece('Melena_Derecha',[.138,-length/2,.045],[.065,.12+length,.083]);
     piece('Melena_Posterior',[0,-length/2,.14],[.153,.14+length,.065]);
@@ -71,10 +71,10 @@ export function applyCharacterAppearance(root,rawSpec={}){
     torso.scale.x=.29*shape.torso;
     torso.scale.z=.18*Math.min(1.25,shape.torso);
   }
-  if(pelvis)pelvis.scale.x=.255*shape.hips*(spec.presentation==='feminine'?1.04:1);
+  if(pelvis)pelvis.scale.x=.255*shape.hips*(spec.presentation === 'feminine' ? 1.04 : 1);
   for(const [name,sign] of [['Izquierdo_Hombro',-1],['Derecho_Hombro',1]]){
     const part=get(root,name);
-    if(part)part.position.x=sign*.335*shape.shoulder*(spec.presentation==='feminine'?.95:1);
+    if(part)part.position.x=sign*.335*shape.shoulder*(spec.presentation === 'feminine' ? .95 : 1);
   }
   for(const [name,sign] of [['Izquierda_Cadera',-1],['Derecha_Cadera',1]]){
     const part=get(root,name);
@@ -82,8 +82,8 @@ export function applyCharacterAppearance(root,rawSpec={}){
   }
   const face=get(root,'Rostro_Base');
   if(face){
-    face.scale.x=spec.faceShape==='round'?.172:spec.faceShape==='angular'?.147:.156;
-    face.scale.y=spec.faceShape==='round'?.17:spec.faceShape==='angular'?.21:.196;
+    face.scale.x=spec.faceShape === 'round' ? .172 : spec.faceShape === 'angular' ? .147 : .156;
+    face.scale.y=spec.faceShape === 'round' ? .17 : spec.faceShape === 'angular' ? .21 : .196;
   }
   const head=get(root,'Cabeza');
   if(head)addHair(head,spec);
