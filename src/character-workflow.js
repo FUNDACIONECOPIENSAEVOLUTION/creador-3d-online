@@ -48,17 +48,18 @@ export class CharacterWorkflow {
   getBrief() {
     const description = document.getElementById('character-prompt').value.trim();
     return {
-      schemaVersion: '1.0',
-      type: 'character_reference',
+      schemaVersion: 'ecoblend.brief.v1',
+      type: 'universal_3d_reference',
       description,
       intendedUse: document.getElementById('character-use').value,
       exportFormat: 'glb',
       targetMaxMegabytes: 15,
-      rigRequired: true,
       animationDesired: true,
+      rigPreference: 'when_moving_parts_needed',
       referenceImageAvailable: !!this.imageDataUrl,
-      instructions: 'Crear usando herramientas propias de NeoBlender y/o Blender+MPFB libre, revisar anatomía, rig y clips; exportar GLB. Evitar APIs comerciales de pago.',
-      limitations: 'Este visor no genera una malla humana a partir de una imagen por sí mismo.'
+      blueprintSchema: 'ecoblend.asset.v1',
+      instructions: 'Si una IA con visión y MCP está conectada, analizar primero la referencia, identificar objeto, silueta, partes, materiales y articulaciones; generar planos declarativos EcoBlend, previsualizar las cuatro vistas y corregir. MPFB2 es opcional solo para anatomía humana fuera de GitHub Pages. No depender de APIs 3D comerciales.',
+      limitations: 'Los comandos locales crean plantillas y geometría por partes; un sistema multimodal conectado debe interpretar la imagen. No hay reconstrucción fotogramétrica ni generación hiperrealista arbitraria automática en la web.'
     };
   }
 

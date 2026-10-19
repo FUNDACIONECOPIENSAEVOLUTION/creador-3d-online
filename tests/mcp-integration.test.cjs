@@ -46,7 +46,7 @@ test('Integración MCP: stdio ↔ websocket local, Origin y herramientas permiti
     assert.match(stderr, /127\.0\.0\.1/);
 
     const init = await call('initialize', { protocolVersion: '2024-11-05', capabilities: {} });
-    assert.equal(init.result.serverInfo.version, '1.3.0');
+    assert.equal(init.result.serverInfo.version, '1.4.0');
     const listing = await call('tools/list', {});
     const names = listing.result.tools.map(x => x.name);
     assert.ok(names.includes('mcp_get_reference_image'));
@@ -56,6 +56,9 @@ test('Integración MCP: stdio ↔ websocket local, Origin y herramientas permiti
     assert.ok(names.includes('mcp_animation_pivot'));
     assert.ok(!names.some(name => /hunyuan|tripo|meshy/i.test(name)));
     assert.ok(names.includes('mcp_get_creation_brief'));
+    assert.ok(names.includes('mcp_asset_build'));
+    assert.ok(names.includes('mcp_asset_validate'));
+    assert.ok(names.includes('mcp_asset_preset'));
     assert.ok(!names.includes('mcp_execute_three_code'));
 
     ws = new WebSocket('ws://127.0.0.1:' + port, {
