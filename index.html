@@ -38,8 +38,8 @@
       <button onclick="app.subdivideSelected()" title="Suavizar o aumentar resolución">+ Subdividir</button>
       <button onclick="app.deleteSelected()" style="color:#fca5a5;">Borrar (Supr)</button>
       <div class="divider"></div>
-      <input type="file" id="glb-upload" accept=".glb,.gltf" style="display:none" onchange="app.importGLB(event)" />
-      <button onclick="document.getElementById('glb-upload').click()">Importar .GLB</button>
+      <input type="file" id="glb-upload" accept=".glb,.gltf,.obj,.fbx" style="display:none" onchange="app.importGLB(event)" />
+      <button onclick="document.getElementById('glb-upload').click()">Importar GLB / OBJ / FBX</button>
       <button onclick="app.exportGLB()">Exportar .GLB</button>
     </div>
   </header>
@@ -84,7 +84,7 @@
   <main id="viewport-container">
     <div id="viewport-overlay">
       <strong>Creador 3D Online — PBR Studio (ACES Filmic)</strong><br/>
-      Click Izq: Seleccionar | Click Der / Alt+Click: Orbitar | Rueda: Zoom | Arrastra archivos <code>.GLB</code> al lienzo<br/>
+      Click Izq: Seleccionar | Click Der / Alt+Click: Orbitar | Rueda: Zoom | Arrastra archivos <code>.GLB / .OBJ / .FBX</code> al lienzo<br/>
       Atajos: <code>G</code> Mover | <code>R</code> Rotar | <code>S</code> Escalar | <code>D</code> Duplicar | <code>Supr</code> Eliminar
     </div>
   </main>
@@ -135,7 +135,7 @@
         <button onclick="app.downloadCreationBrief()">📦 Descargar encargo IA</button>
         <button onclick="app.mcpDumpScene()">🔍 Inspeccionar escena</button>
       </div>
-      <p class="character-note">La imagen y el encargo quedan en el navegador y pueden consultarse por el MCP local autorizado. Para generar la geometría hiperrealista se requiere Blender/MPFB o un generador 3D externo; este botón no promete fabricar un humano solo a partir de la imagen.</p>
+      <p class="character-note">La imagen y el encargo quedan en el navegador y pueden consultarse por el MCP local autorizado. Para generar la geometría hiperrealista se requiere Blender/MPFB o un trabajador Blender libre opcional; este botón no promete fabricar un humano solo a partir de la imagen.</p>
     </div>
     <div class="section-title">Movimiento de personajes GLB</div>
     <div class="prop-group">
