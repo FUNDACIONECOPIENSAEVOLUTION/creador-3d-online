@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "type": "character_reference",
+  "description": "Guardián ángel adulto para juego de ajedrez 3D; anatomía humana realista, cara proporcionada, cinco dedos en cada mano, túnica marfil, armadura plateada y dorada, alas de plumas naturales y halo. Esqueleto humanoide, acciones Idle, Attack, Defend, Hit y Defeat. Un solo personaje completo, pose neutra, textura PBR realista.",
+  "intendedUse": "chess_game",
+  "exportFormat": "glb",
+  "targetMaxMegabytes": 15,
+  "rigRequired": true,
+  "animationDesired": true,
+  "referenceImageAvailable": false,
+  "acceptance": [
+    "Manos correctas con cinco dedos",
+    "Rig funcional para ataque/defensa",
+    "Movimiento sin deformaciones defectuosas",
+    "GLB compatible con Three.js/GLTFLoader",
+    "Tamaño documentado, sin prometer < 15 MB sin medir"
+  ]
+}
