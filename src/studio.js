@@ -8,6 +8,7 @@ import * as THREE from 'three';
     import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
     import { CharacterWorkflow } from './character-workflow.js';
     import { AnimationEditor } from './animation-editor.js';
+    import { createFreeCharacter } from './procedural-character.js';
 
     class Creador3DOnlineStudio {
       constructor() {
@@ -18,6 +19,8 @@ import * as THREE from 'three';
         this.aiActionHistory = [];
         this.characterWorkflow = new CharacterWorkflow(this);
         this.animationEditor = new AnimationEditor(this);
+        this.qualityProfile = typeof navigator !== 'undefined' && (navigator.deviceMemory <= 4 || navigator.hardwareConcurrency <= 4) ? 'low' : 'balanced';
+        this.lastRenderAt = 0;
 
         this.initEngine();
         this.initLightingAndHDRI();
@@ -25,6 +28,7 @@ import * as THREE from 'three';
         this.initDragAndDrop();
         this.initDefaultScene();
         this.initMCPBridge();
+        this.setQualityProfile(this.qualityProfile);
         this.animate();
       }
 
@@ -549,6 +553,42 @@ import * as THREE from 'three';
       resumeAnimation() { this.characterWorkflow.resume(); this.setStatus('Animación reanudada.'); }
       setAnimationSpeed(value) { this.characterWorkflow.setSpeed(value); }
 
+      createWebCharacter(type) {
+        try {
+          const { object, metadata } = createFreeCharacter({
+            type, detail: this.qualityProfile === 'low' ? 'low' : 'balanced'
+          });
+          const count = this.objects.filter(o => o.userData?.neoFreeCharacter).length;
+          object.position.x = count * 2.5 - 2;
+          this.registerMesh(object, true);
+          this.characterWorkflow.ensureModel(object);
+          this.logAIAction('Creado personaje libre desde navegador: ' + object.name);
+          this.setStatus('Creado ' + object.name + '. Articulaciones editables en Outliner; crea poses y exporta a GLB.');
+          return { name: object.name, uuid: object.uuid, ...metadata };
+        } catch (err) {
+          this.setStatus('No se pudo crear personaje: ' + err.message);
+          return { error: err.message };
+        }
+      }
+
+      setQualityProfile(value) {
+        const profiles = ['low', 'balanced', 'high'];
+        if (!profiles.includes(value)) throw new Error('Perfil de rendimiento no válido.');
+        this.qualityProfile = value;
+        const pixelCap = { low: 1, balanced: 1.5, high: 2 }[value];
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelCap));
+        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        const shadows = value !== 'low';
+        this.renderer.shadowMap.enabled = shadows;
+        this.keyLight.castShadow = shadows;
+        const selector = document.getElementById('quality-profile');
+        if (selector) selector.value = value;
+        this.setStatus(value === 'low'
+          ? 'Modo ligero: máximo 30 FPS, sombras desactivadas y resolución optimizada.'
+          : 'Calidad visual: ' + value);
+        return { qualityProfile: value, targetFps: value === 'low' ? 30 : 60 };
+      }
+
       animationErrorSafe(action) {
         try {
           const response = action();
@@ -669,6 +709,8 @@ import * as THREE from 'three';
               { name: 'mcp_animation_commit', description: 'Convertir los fotogramas a AnimationClip glTF exportable.' },
               { name: 'mcp_animation_preset', description: 'Movimiento básico gratis de pieza completa.' },
               { name: 'mcp_animation_play', description: 'Previsualizar un clip sobre el modelo; opcional instante de tiempo.' },
+              { name: 'mcp_character_create', description: 'Crear una base humana o un ángel articulado con geometría ligera en la propia web, sin IA de pago.' },
+              { name: 'mcp_set_quality', description: 'Cambiar perfil ligero, equilibrado o visual.' },
               { name: 'mcp_animation_pivot', description: 'Crear articulación en una extremidad de malla separada.' }
             ];
           },
@@ -781,6 +823,11 @@ import * as THREE from 'three';
               else if (method === 'mcp_capture_quad_view') result = this.captureQuadView();
               else if (method === 'mcp_get_creation_brief') result = self.characterWorkflow.getBrief();
               else if (method === 'mcp_get_reference_image') result = self.characterWorkflow.getImage();
+              else if (method === 'mcp_character_create') {
+                if (!['humanoid', 'angel'].includes(params.type)) throw new Error('Tipo de personaje desconocido.');
+                result = self.createWebCharacter(params.type);
+              }
+              else if (method === 'mcp_set_quality') result = self.setQualityProfile(params.profile);
               else if (method === 'mcp_animation_inspect') result = self.animationEditor.inspect();
               else if (method === 'mcp_animation_create') result = self.animationEditor.createAction(
                 params.name, params.duration,
@@ -901,8 +948,10 @@ import * as THREE from 'three';
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
       }
 
-      animate() {
-        requestAnimationFrame(() => this.animate());
+      animate(timestamp = 0) {
+        requestAnimationFrame((time) => this.animate(time));
+        if (this.qualityProfile === 'low' && timestamp - this.lastRenderAt < 32) return;
+        this.lastRenderAt = timestamp;
         this.characterWorkflow.update();
         this.orbit.update();
         this.renderer.render(this.scene, this.camera);
