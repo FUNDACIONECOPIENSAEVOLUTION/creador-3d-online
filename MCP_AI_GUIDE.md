@@ -68,6 +68,7 @@ Cuando un usuario pida a una IA *"Crea un modelo 3D hiperrealista de X"*:
 | :--- | :--- | :--- | :--- | :--- |
 | 2026-10-19 | **Gemini (Arquitecto Inicial)** | Creación del motor PBR Three.js r160, interfaz estilo Blender, atajos `G/R/S/D/Supr`, exportador/importador `.GLB`, texturas procedurales, visión cuádruple (`mcp_capture_quad_view`) y puente `mcp-server.js` configurado para `FUNDACIONECOPIENSAEVOLUTION/creador-3d-online`. | `index.html`, `MCP_AI_GUIDE.md`, `mcp-server.js`, `package.json`, `README.md` | Integrar CSG Booleans (`three-bvh-csg`) y pinceles de escultura de vértices en `index.html`. |
 | 2026-10-19 | **ChatGPT GPT-6 (implementación 1.2, rama feature)** | Separa CSS y JS, agrega encargo foto+texto para agentes, importar GLB riggeado con selección jerárquica, clips AnimationMixer, exportación con clips, visión ortográfica, MCP stdio/WS restringido con bloqueo de ejecución de JS remota, pruebas y ejemplo de ángel. **No incluye generación automática de humanos desde imágenes; requiere Blender u otro productor 3D.** | `index.html`, `styles/studio.css`, `src/studio.js`, `src/character-workflow.js`, `mcp-server.js`, `package.json`, `README.md`, `tests/`, `scripts/`, `examples/` | Ejecutar CI, revisar PR, comprobar con personaje GLB real y validar producción Blender+MPFB. |
+| 2026-10-19 | **ChatGPT GPT-6 (animación libre 1.3)** | Editor de fotogramas y clips nativos para piezas/huesos, presets rígidos gratuitos, pivotes en submallas, importadores GLB/GLTF/OBJ/FBX, herramientas MCP para crear/registrar/reproducir animaciones; pruebas Node+Three.js. No incorpora proveedores generativos de pago ni garantiza auto-rig de mallas fusionadas. | `src/animation-editor.js`, `src/character-workflow.js`, `src/studio.js`, `index.html`, `mcp-server.js`, `package.json`, `tests/`, `README.md`, `MCP_AI_GUIDE.md` | Probar huesos reales y exportación GLB; siguiente fase: autorrig libre con pesos, guardado y deshacer. |
 
 ---
 
@@ -86,3 +87,19 @@ Cuando un usuario pida a una IA *"Crea un modelo 3D hiperrealista de X"*:
 **Seguridad de versiones anteriores:** jamás reconectar un servidor que exponga `mcp_execute_three_code` al público. El método original evaluaba JavaScript sin controles suficientes.
 
 **Próximos pasos ordenados:** (1) pasar CI y probar un GLB riggeado real, (2) solucionar fallos de exportación y texturas externas, (3) crear una biblioteca legalmente distribuible de personajes base, (4) pipeline local Blender/MPFB para generación/refinado, (5) animaciones originales de batalla e integración ECOAJEDREZ, (6) optimización LOD/GLB <=15 MB con medidas reales.
+
+---
+
+## 7. Actualización técnica — Animación integrada (versión 1.3)
+
+**Sin depender de servicios comerciales 3D.** Toda animación que implementa NeoBlender 1.3 se calcula localmente con las herramientas libres de Three.js.
+
+- `src/animation-editor.js`: acciones con duración, fotogramas de transformaciones, rutas de track por UUID, clips glTF, pivotes de piezas rígidas y cinco presets gratuitos (Idle/Attack/Defend/Hit/Defeat).
+- `src/character-workflow.js`: registra nuevos clips y reproduce los antiguos; conserva animaciones en la exportación GLB.
+- `src/studio.js`: importar GLB/GLTF/OBJ/FBX; Outliner puede mostrar huesos; herramientas MCP `mcp_animation_*` tipadas. Esqueleto real permite flexión de piel si trae pesos.
+- `tests/animation.test.mjs`: verifica interpolación de brazo con hueso, articulaciones rígidas y validación de entradas.
+- **Importante:** un único Mesh sin huesos no tiene grupos de pesos para articulación. Los presets mueven la malla entera; la segmentación/autorrig por pesos se desarrollará en una futura versión.
+- La documentación antigua que menciona `mcp_execute_three_code` queda obsoleta: ese método está **deshabilitado** intencionadamente. La versión 1.3 preserva el resto del contrato MCP.
+- No se suministran credenciales ni se hacen llamadas a Tripo/Hunyuan3D/Meshy; el motor de IA puede manejar las operaciones MCP del editor, siempre que su cliente tenga autorización.
+
+**Criterio de aceptación real:** importar un GLB con brazo riggeado, seleccionar hueso, registrar fotogramas de 0 y 1 s, guardar clip, reproducir, exportar GLB, abrirlo y verificar que sigue moviendo el brazo. El CI no sustituye esta inspección visual.
