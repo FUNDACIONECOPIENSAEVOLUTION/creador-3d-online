@@ -92,3 +92,9 @@ Desde un chat que disponga de herramientas MCP compatibles se pueden invocar `mc
 6. Guardado, deshacer/rehacer, LOD y compresión GLB para juegos/WebAR.
 
 **Licencia del código:** MIT. Los assets externos requieren comprobar sus licencias por separado.
+
+## Anatomía humana especializada, sin obligar a todos a usar MPFB2
+
+Si la descripción corresponde a un humano, el motor puede usar `mcp_human_describe` para extraer atributos explícitos y luego `mcp_human_create` para personalizar una base ligera dentro de EcoBlend. Si corresponde a un dragón o a una silla, la IA debe usar `mcp_asset_build` con un plano universal. MPFB2 queda como posible adaptador futuro de mayor detalle humano; no se ejecuta en GitHub Pages.
+
+Se admiten también partes `shape:"mesh"` con `vertices:[[x,y,z],...]` y `faces:[[i,j,k],...]`, con límites de hasta 3000 vértices y 6000 caras por parte y un presupuesto global, para que una IA defina siluetas que no se puedan aproximar adecuadamente solo con primitivas. Esos vértices deben ser proporcionados por un agente o modelador; EcoBlend no los infiere automáticamente de una imagen.
