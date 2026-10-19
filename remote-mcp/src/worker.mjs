@@ -14,7 +14,7 @@ export const SUPPORTED_ORIGINS = new Set([
   "http://localhost:8000",
   "http://127.0.0.1:8000"
 ]);
-const ROOM_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\\.(\\d{13})\\.([a-zA-Z0-9_-]{43})$/i;
+const ROOM_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.(\d{13})\.([a-zA-Z0-9_-]{43})$/i;
 const MAX_JSON = 135 * 1024;
 
 const encoder=new TextEncoder();
