@@ -501,14 +501,21 @@ import * as THREE from 'three';
         else reader.readAsArrayBuffer(file);
       }
 
-      exportGLB() {
-        const roots = this.objects.filter(o => o.name !== 'Studio_Floor');
+      exportSelectedGLB() {
+        let root;
+        try { root = this.animationEditor.rootFor(this.selectedObject); }
+        catch (error) { this.setStatus('Selecciona un personaje antes de exportarlo: ' + error.message); return; }
+        this.exportGLB(root);
+      }
+
+      exportGLB(selectedRoot = null) {
+        const roots = selectedRoot ? [selectedRoot] : this.objects.filter(o => o.name !== 'Studio_Floor');
         if (!roots.length) {
           this.setStatus('No hay modelos para exportar.');
           return;
         }
         const exporter = new GLTFExporter();
-        const clips = this.characterWorkflow.getExportClips();
+        const clips = selectedRoot ? this.characterWorkflow.getClipsFor(selectedRoot) : this.characterWorkflow.getExportClips();
         exporter.parse(
           roots,
           (result) => {
@@ -516,7 +523,9 @@ import * as THREE from 'three';
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'modelo_creador3d_ecopiensa.glb';
+            link.download = selectedRoot
+              ? (selectedRoot.name.replace(/[^a-zA-Z0-9_-]/g, '_') || 'personaje') + '.glb'
+              : 'escena_completa_neoblender.glb';
             link.click();
             setTimeout(() => URL.revokeObjectURL(url), 3000);
             const sizeMB = (blob.size / 1048576).toFixed(2);
