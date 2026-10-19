@@ -1,0 +1,16 @@
+{
+  "name": "creador-3d-online",
+  "version": "1.1.0",
+  "description": "Estudio de modelado 3D hiperrealista PBR en navegador con puente de visi\u00f3n y control MCP para IAs.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online.git"
+  },
+  "scripts": {
+    "start-mcp": "node mcp-server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "license": "MIT"
+}
