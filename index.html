@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeoBlender Web Studio 3D + MCP Bridge</title>
+  <style>
+    :root {
+      --bg-dark: #18181b;
+      --bg-panel: #232328;
+      --bg-header: #2d2d34;
+      --accent: #ea580c;
+      --accent-hover: #f97316;
+      --mcp-green: #10b981;
+      --text-main: #e4e4e7;
+      --text-muted: #a1a1aa;
+      --border: #3f3f46;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 42px 1fr 26px;
+      grid-template-columns: 280px 1fr 320px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+
+    /* TOPBAR */
+    header {
+      grid-column: 1 / -1;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      gap: 8px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+    }
+    .brand-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+    button, select {
+      background: #36363f;
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:hover { background: #464652; border-color: #52525b; }
+    button.active { background: var(--accent); border-color: var(--accent-hover); color: #fff; }
+    button.mcp-btn {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--mcp-green);
+      color: #6ee7b7;
+      font-weight: 600;
+    }
+    button.mcp-btn:hover { background: rgba(16, 185, 129, 0.3); }
+    .divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+    /* LEFT PANEL: OUTLINER & MCP BRIDGE */
+    .panel-left {
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .section-title {
+      background: var(--bg-header);
+      padding: 7px 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 10px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #outliner {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+    }
+    .outliner-item {
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+    .outliner-item:hover { background: #2e2e36; }
+    .outliner-item.selected { background: rgba(234, 88, 12, 0.25); border-left: 3px solid var(--accent); }
+
+    /* MCP CONSOLE */
+    .mcp-container {
+      height: 52%;
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+      gap: 6px;
+      background: #1b1b20;
+    }
+    .mcp-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+    .status-led {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--mcp-green);
+      box-shadow: 0 0 6px var(--mcp-green);
+    }
+    textarea.mcp-io {
+      flex: 1;
+      background: #111114;
+      color: #a7f3d0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px;
+      font-family: 'Consolas', monospace;
+      font-size: 10.5px;
+      resize: none;
+      user-select: text;
+    }
+    .vision-preview {
+      height: 75px;
+      background: #09090b;
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .vision-preview img { max-height: 100%; max-width: 100%; object-fit: contain; }
+    .vision-label {
+      position: absolute; bottom: 2px; right: 4px;
+      font-size: 9px; color: var(--text-muted); background: rgba(0,0,0,0.7); padding: 1px 4px; border-radius: 2px;
+    }
+
+    /* CENTER VIEWPORT */
+    #viewport-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, #2a2a32 0%, #141417 100%);
+      overflow: hidden;
+    }
+    #viewport-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      pointer-events: none;
+      background: rgba(24, 24, 27, 0.75);
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    /* RIGHT PANEL: PBR & TRANSFORM PROPERTIES */
+    .panel-right {
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .prop-group {
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .prop-row {
+      display: grid;
+      grid-template-columns: 95px 1fr;
+      align-items: center;
+      gap: 6px;
+    }
+    .prop-row label { color: var(--text-muted); font-size: 11px; }
+    .vec3-inputs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+    input[type="number"], input[type="text"] {
+      background: #18181b;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 4px 6px;
+      border-radius: 3px;
+      width: 100%;
+      font-size: 11px;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    input[type="color"] {
+      width: 100%; height: 24px; border: 1px solid var(--border);
+      background: none; cursor: pointer; border-radius: 3px;
+    }
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    /* FOOTER */
+    footer {
+      grid-column: 1 / -1;
+      background: var(--bg-header);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+  </style>
+
+  <!-- Three.js ES Modules ImportMap -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- BARRA SUPERIOR -->
+  <header>
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <span>NeoBlender Web 3D</span>
+      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP Vision Ready</span>
+    </div>
+
+    <div class="toolbar">
+      <button onclick="app.addPrimitive('sphere')">+ Esfera PBR</button>
+      <button onclick="app.addPrimitive('box')">+ Cubo</button>
+      <button onclick="app.addPrimitive('torusknot')">+ Toroide Nudo</button>
+      <button onclick="app.addPrimitive('cylinder')">+ Cilindro</button>
+      <button onclick="app.addHyperRealisticAssembly()" style="border-color:var(--accent); color:#fdba74;">+ Escultura Hiperrealista</button>
+      <div class="divider"></div>
+      <button id="btn-translate" class="active" onclick="app.setTransformMode('translate')">Mover (G)</button>
+      <button id="btn-rotate" onclick="app.setTransformMode('rotate')">Rotar (R)</button>
+      <button id="btn-scale" onclick="app.setTransformMode('scale')">Escalar (S)</button>
+      <button onclick="app.deleteSelected()" style="color:#fca5a5;">Eliminar (Supr)</button>
+      <div class="divider"></div>
+      <button onclick="app.exportGLB()">Exportar .GLB</button>
+    </div>
+  </header>
+
+  <!-- PANEL IZQUIERDO: OUTLINER Y PUENTE MCP -->
+  <aside class="panel-left">
+    <div class="section-title">
+      <span>Outliner (Escena)</span>
+      <span id="obj-count">0 objs</span>
+    </div>
+    <div id="outliner"></div>
+
+    <div class="section-title">
+      <span>MCP AI Bridge (Visión & Control)</span>
+      <span style="color:var(--mcp-green)">JSON-RPC</span>
+    </div>
+    <div class="mcp-container">
+      <div class="mcp-status">
+        <div class="status-led"></div>
+        <span>API Global: <code>window.MCP_BRIDGE</code></span>
+      </div>
+      <div style="display:flex; gap:4px;">
+        <input type="text" id="ws-url" value="ws://localhost:8765" placeholder="MCP WebSocket Server" />
+        <button class="mcp-btn" onclick="app.connectMCPSocket()">Conectar</button>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+        <button class="mcp-btn" onclick="app.mcpCaptureVision()">👁️ Capturar Visión IA</button>
+        <button onclick="app.mcpDumpScene()">📄 Ver Scene JSON</button>
+      </div>
+      <div class="vision-preview" id="vision-box">
+        <span style="color:var(--text-muted); font-size:10px;">Sin captura activa</span>
+        <span class="vision-label">Snapshots Base64 para IA</span>
+      </div>
+      <textarea id="mcp-console" class="mcp-io" spellcheck="false" placeholder="Ejecuta un comando JSON-RPC o script procedural desde la IA..."></textarea>
+      <button class="mcp-btn" onclick="app.runMCPConsoleCommand()">⚡ Ejecutar Payload MCP en Escena</button>
+    </div>
+  </aside>
+
+  <!-- VIEWPORT CENTRAL 3D -->
+  <main id="viewport-container">
+    <div id="viewport-overlay">
+      <strong>Viewport PBR Studio (ACES Filmic)</strong><br/>
+      Click Izq: Seleccionar | Click Der / Alt+Click: Orbitar | Rueda: Zoom<br/>
+      Atajos: <code>G</code> Mover | <code>R</code> Rotar | <code>S</code> Escalar | <code>Supr</code> Borrar
+    </div>
+  </main>
+
+  <!-- PANEL DERECHO: INSPECTOR PBR & TRANSFORM -->
+  <aside class="panel-right">
+    <div class="section-title">Transformación del Objeto</div>
+    <div class="prop-group">
+      <div class="prop-row">
+        <label>Nombre</label>
+        <input type="text" id="prop-name" onchange="app.updateSelectedTransform()" />
+      </div>
+      <div class="prop-row">
+        <label>Posición (XYZ)</label>
+        <div class="vec3-inputs">
+          <input type="number" step="0.1" id="pos-x" onchange="app.updateSelectedTransform()" />
+          <input type="number" step="0.1" id="pos-y" onchange="app.updateSelectedTransform()" />
+          <input type="number" step="0.1" id="pos-z" onchange="app.updateSelectedTransform()" />
+        </div>
+      </div>
+      <div class="prop-row">
+        <label>Escala (XYZ)</label>
+        <div class="vec3-inputs">
+          <input type="number" step="0.1" id="scl-x" onchange="app.updateSelectedTransform()" />
+          <input type="number" step="0.1" id="scl-y" onchange="app.updateSelectedTransform()" />
+          <input type="number" step="0.1" id="scl-z" onchange="app.updateSelectedTransform()" />
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Presets Hiperrealistas (PBR)</div>
+    <div class="prop-group">
+      <div class="preset-grid">
+        <button onclick="app.applyMaterialPreset('gold')">🥇 Oro Pulido</button>
+        <button onclick="app.applyMaterialPreset('glass')">💎 Cristal / Lente</button>
+        <button onclick="app.applyMaterialPreset('ceramic')">🏺 Cerámica Lacada</button>
+        <button onclick="app.applyMaterialPreset('carpaint')">🚗 Pintura Camaleón</button>
+        <button onclick="app.applyMaterialPreset('clay')">🧱 Arcilla Mineral</button>
+        <button onclick="app.applyMaterialPreset('chrome')">⚙️ Cromo Espejo</button>
+      </div>
+    </div>
+
+    <div class="section-title">Shader Físico (MeshPhysicalMaterial)</div>
+    <div class="prop-group">
+      <div class="prop-row">
+        <label>Color Base</label>
+        <input type="color" id="mat-color" oninput="app.updateSelectedMaterial()" />
+      </div>
+      <div class="prop-row">
+        <label>Metalness</label>
+        <input type="range" id="mat-metalness" min="0" max="1" step="0.01" oninput="app.updateSelectedMaterial()" />
+      </div>
+      <div class="prop-row">
+        <label>Roughness</label>
+        <input type="range" id="mat-roughness" min="0" max="1" step="0.01" oninput="app.updateSelectedMaterial()" />
+      </div>
+      <div class="prop-row">
+        <label>Clearcoat (Laca)</label>
+        <input type="range" id="mat-clearcoat" min="0" max="1" step="0.01" oninput="app.updateSelectedMaterial()" />
+      </div>
+      <div class="prop-row">
+        <label>Transmission (Vidrio)</label>
+        <input type="range" id="mat-transmission" min="0" max="1" step="0.01" oninput="app.updateSelectedMaterial()" />
+      </div>
+      <div class="prop-row">
+        <label>IOR (Refracción)</label>
+        <input type="range" id="mat-ior" min="1.0" max="2.33" step="0.01" value="1.5" oninput="app.updateSelectedMaterial()" />
+      </div>
+      <div class="prop-row">
+        <label>Wireframe</label>
+        <input type="checkbox" id="mat-wireframe" onchange="app.updateSelectedMaterial()" style="width:auto;" />
+      </div>
+    </div>
+
+    <div class="section-title">Iluminación de Estudio & Entorno</div>
+    <div class="prop-group">
+      <div class="prop-row">
+        <label>Exposición HDR</label>
+        <input type="range" id="env-exposure" min="0.2" max="2.5" step="0.05" value="1.1" oninput="app.updateEnvironment()" />
+      </div>
+      <div class="prop-row">
+        <label>Luz Principal</label>
+        <input type="range" id="light-intensity" min="0" max="10" step="0.2" value="3.5" oninput="app.updateEnvironment()" />
+      </div>
+    </div>
+  </aside>
+
+  <!-- BARRA INFERIOR -->
+  <footer>
+    <span id="status-bar">Listo. Motor PBR y servidor de inspección MCP inicializados.</span>
+    <span>Three.js r160 | Physical Raycasting | Protocolo Multi-Agente MCP v1.0</span>
+  </footer>
+
+  <!-- LÓGICA DEL MOTOR 3D Y SERVIDOR MCP -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { TransformControls } from 'three/addons/controls/TransformControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+    class NeoBlenderMCPStudio {
+      constructor() {
+        this.container = document.getElementById('viewport-container');
+        this.objects = [];
+        this.selectedObject = null;
+        this.ws = null;
+
+        this.initEngine();
+        this.initLightingAndHDRI();
+        this.initControls();
+        this.initDefaultScene();
+        this.initMCPBridge();
+        this.animate();
+      }
+
+      initEngine() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x16161a);
+
+        this.camera = new THREE.PerspectiveCamera(
+          45,
+          this.container.clientWidth / this.container.clientHeight,
+          0.1,
+          1000
+        );
+        this.camera.position.set(5, 4, 6);
+
+        // preserveDrawingBuffer: true es CRÍTICO para que las IAs por MCP puedan capturar visión en Base64
+        this.renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          preserveDrawingBuffer: true,
+          powerPreference: 'high-performance'
+        });
+        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.1;
+        this.container.appendChild(this.renderer.domElement);
+
+        // Grid y ejes estilo Blender
+        const grid = new THREE.GridHelper(20, 20, 0xea580c, 0x33333d);
+        grid.position.y = -0.001;
+        this.scene.add(grid);
+
+        window.addEventListener('resize', () => this.onResize());
+      }
+
+      initLightingAndHDRI() {
+        // Entorno de estudio fotográfico procedural para reflejos PBR reales
+        const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+        this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
+        // Key Light con sombras de alta resolución
+        this.keyLight = new THREE.DirectionalLight(0xfff7ed, 3.5);
+        this.keyLight.position.set(6, 10, 6);
+        this.keyLight.castShadow = true;
+        this.keyLight.shadow.mapSize.set(2048, 2048);
+        this.keyLight.shadow.bias = -0.0005;
+        this.scene.add(this.keyLight);
+
+        // Rim Light (Contraluz azulada suave)
+        this.rimLight = new THREE.SpotLight(0x38bdf8, 2.5);
+        this.rimLight.position.set(-6, 5, -6);
+        this.scene.add(this.rimLight);
+      }
+
+      initControls() {
+        this.orbit = new OrbitControls(this.camera, this.renderer.domElement);
+        this.orbit.enableDamping = true;
+        this.orbit.dampingFactor = 0.06;
+
+        this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
+        this.transformControl.addEventListener('dragging-changed', (e) => {
+          this.orbit.enabled = !e.value;
+        });
+        this.transformControl.addEventListener('change', () => {
+          if (this.selectedObject) this.syncInspectorFromObject();
+        });
+        this.scene.add(this.transformControl);
+
+        // Raycaster para selección con clic
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+
+        this.renderer.domElement.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0 || this.transformControl.dragging) return;
+          const rect = this.renderer.domElement.getBoundingClientRect();
+          this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+          this.raycaster.setFromCamera(this.mouse, this.camera);
+          const intersects = this.raycaster.intersectObjects(this.objects, false);
+          if (intersects.length > 0) {
+            this.selectObject(intersects[0].object);
+          }
+        });
+
+        // Atajos tipo Blender
+        window.addEventListener('keydown', (e) => {
+          if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+          const key = e.key.toLowerCase();
+          if (key === 'g') this.setTransformMode('translate');
+          if (key === 'r') this.setTransformMode('rotate');
+          if (key === 's') this.setTransformMode('scale');
+          if (e.key === 'Delete' || e.key === 'Backspace') this.deleteSelected();
+        });
+      }
+
+      initDefaultScene() {
+        // Suelo receptor de sombras
+        const floorGeo = new THREE.PlaneGeometry(20, 20);
+        const floorMat = new THREE.MeshPhysicalMaterial({
+          color: 0x202026,
+          roughness: 0.35,
+          metalness: 0.1,
+          clearcoat: 0.2
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        floor.name = 'Studio_Floor';
+        this.registerMesh(floor, false);
+
+        // Escultura hiperrealista inicial
+        this.addHyperRealisticAssembly();
+      }
+
+      registerMesh(mesh, select = true) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        this.scene.add(mesh);
+        this.objects.push(mesh);
+        this.refreshOutliner();
+        if (select) this.selectObject(mesh);
+        return mesh;
+      }
+
+      addPrimitive(type, customParams = {}) {
+        let geo;
+        const namePrefix = type.charAt(0).toUpperCase() + type.slice(1);
+        switch (type) {
+          case 'sphere':
+            geo = new THREE.SphereGeometry(0.9, 64, 64);
+            break;
+          case 'box':
+            geo = new THREE.BoxGeometry(1.4, 1.4, 1.4, 4, 4, 4);
+            break;
+          case 'cylinder':
+            geo = new THREE.CylinderGeometry(0.8, 0.8, 1.8, 64);
+            break;
+          case 'torusknot':
+          default:
+            geo = new THREE.TorusKnotGeometry(0.75, 0.24, 150, 32);
+            break;
+        }
+
+        const mat = new THREE.MeshPhysicalMaterial({
+          color: customParams.color ?? 0xea580c,
+          metalness: customParams.metalness ?? 0.7,
+          roughness: customParams.roughness ?? 0.15,
+          clearcoat: customParams.clearcoat ?? 0.8,
+          transmission: customParams.transmission ?? 0.0,
+          ior: customParams.ior ?? 1.5,
+          thickness: 1.2
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(
+          customParams.x ?? (Math.random() - 0.5) * 2,
+          customParams.y ?? 1.1,
+          customParams.z ?? (Math.random() - 0.5) * 2
+        );
+        mesh.name = customParams.name || `${namePrefix}_${this.objects.length}`;
+        return this.registerMesh(mesh, true);
+      }
+
+      addHyperRealisticAssembly() {
+        // Crea un núcleo metálico dorado envuelto en una cápsula de cristal refractor
+        const core = this.addPrimitive('torusknot', {
+          name: 'Nucleo_Oro_PBR',
+          color: 0xffb703,
+          metalness: 1.0,
+          roughness: 0.08,
+          clearcoat: 1.0,
+          x: 0, y: 1.2, z: 0
+        });
+
+        const glassShellGeo = new THREE.SphereGeometry(1.45, 64, 64);
+        const glassShellMat = new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,
+          metalness: 0.0,
+          roughness: 0.02,
+          transmission: 0.95,
+          ior: 1.52,
+          thickness: 2.0,
+          clearcoat: 1.0
+        });
+        const shell = new THREE.Mesh(glassShellGeo, glassShellMat);
+        shell.position.set(2.4, 1.45, 0);
+        shell.name = 'Orbe_Cristal_Refractor';
+        this.registerMesh(shell, false);
+        this.selectObject(core);
+      }
+
+      selectObject(obj) {
+        this.selectedObject = obj;
+        this.transformControl.attach(obj);
+        this.syncInspectorFromObject();
+        this.refreshOutliner();
+        this.setStatus(`Objeto seleccionado: ${obj.name}`);
+      }
+
+      deleteSelected() {
+        if (!this.selectedObject || this.selectedObject.name === 'Studio_Floor') return;
+        this.transformControl.detach();
+        this.scene.remove(this.selectedObject);
+        this.objects = this.objects.filter((o) => o !== this.selectedObject);
+        this.selectedObject = null;
+        this.refreshOutliner();
+      }
+
+      setTransformMode(mode) {
+        this.transformControl.setMode(mode);
+        ['translate', 'rotate', 'scale'].forEach((m) => {
+          document.getElementById(`btn-${m}`).classList.toggle('active', m === mode);
+        });
+      }
+
+      syncInspectorFromObject() {
+        const obj = this.selectedObject;
+        if (!obj) return;
+
+        document.getElementById('prop-name').value = obj.name;
+        document.getElementById('pos-x').value = obj.position.x.toFixed(2);
+        document.getElementById('pos-y').value = obj.position.y.toFixed(2);
+        document.getElementById('pos-z').value = obj.position.z.toFixed(2);
+
+        document.getElementById('scl-x').value = obj.scale.x.toFixed(2);
+        document.getElementById('scl-y').value = obj.scale.y.toFixed(2);
+        document.getElementById('scl-z').value = obj.scale.z.toFixed(2);
+
+        if (obj.material) {
+          document.getElementById('mat-color').value = '#' + obj.material.color.getHexString();
+          document.getElementById('mat-metalness').value = obj.material.metalness ?? 0;
+          document.getElementById('mat-roughness').value = obj.material.roughness ?? 0.5;
+          document.getElementById('mat-clearcoat').value = obj.material.clearcoat ?? 0;
+          document.getElementById('mat-transmission').value = obj.material.transmission ?? 0;
+          document.getElementById('mat-ior').value = obj.material.ior ?? 1.5;
+          document.getElementById('mat-wireframe').checked = !!obj.material.wireframe;
+        }
+      }
+
+      updateSelectedTransform() {
+        const obj = this.selectedObject;
+        if (!obj) return;
+        obj.name = document.getElementById('prop-name').value || obj.name;
+        obj.position.set(
+          parseFloat(document.getElementById('pos-x').value) || 0,
+          parseFloat(document.getElementById('pos-y').value) || 0,
+          parseFloat(document.getElementById('pos-z').value) || 0
+        );
+        obj.scale.set(
+          parseFloat(document.getElementById('scl-x').value) || 1,
+          parseFloat(document.getElementById('scl-y').value) || 1,
+          parseFloat(document.getElementById('scl-z').value) || 1
+        );
+        this.refreshOutliner();
+      }
+
+      updateSelectedMaterial() {
+        const obj = this.selectedObject;
+        if (!obj || !obj.material) return;
+        obj.material.color.set(document.getElementById('mat-color').value);
+        obj.material.metalness = parseFloat(document.getElementById('mat-metalness').value);
+        obj.material.roughness = parseFloat(document.getElementById('mat-roughness').value);
+        obj.material.clearcoat = parseFloat(document.getElementById('mat-clearcoat').value);
+        obj.material.transmission = parseFloat(document.getElementById('mat-transmission').value);
+        obj.material.ior = parseFloat(document.getElementById('mat-ior').value);
+        obj.material.wireframe = document.getElementById('mat-wireframe').checked;
+        obj.material.needsUpdate = true;
+      }
+
+      applyMaterialPreset(preset) {
+        const obj = this.selectedObject;
+        if (!obj || !obj.material) return;
+        const m = obj.material;
+        const presets = {
+          gold:     { color: '#ffb703', metalness: 1.0, roughness: 0.08, clearcoat: 0.5, transmission: 0.0, ior: 1.5 },
+          glass:    { color: '#ffffff', metalness: 0.0, roughness: 0.02, clearcoat: 1.0, transmission: 0.96, ior: 1.52 },
+          ceramic:  { color: '#f8fafc', metalness: 0.05, roughness: 0.12, clearcoat: 1.0, transmission: 0.0, ior: 1.6 },
+          carpaint: { color: '#7c3aed', metalness: 0.85, roughness: 0.15, clearcoat: 1.0, transmission: 0.0, ior: 1.5 },
+          clay:     { color: '#b45309', metalness: 0.0, roughness: 0.78, clearcoat: 0.05, transmission: 0.0, ior: 1.4 },
+          chrome:   { color: '#e2e8f0', metalness: 1.0, roughness: 0.01, clearcoat: 1.0, transmission: 0.0, ior: 2.0 }
+        };
+        const p = presets[preset];
+        if (!p) return;
+        m.color.set(p.color);
+        m.metalness = p.metalness;
+        m.roughness = p.roughness;
+        m.clearcoat = p.clearcoat;
+        m.transmission = p.transmission;
+        m.ior = p.ior;
+        m.needsUpdate = true;
+        this.syncInspectorFromObject();
+      }
+
+      updateEnvironment() {
+        this.renderer.toneMappingExposure = parseFloat(document.getElementById('env-exposure').value);
+        this.keyLight.intensity = parseFloat(document.getElementById('light-intensity').value);
+      }
+
+      refreshOutliner() {
+        const list = document.getElementById('outliner');
+        list.innerHTML = '';
+        document.getElementById('obj-count').textContent = `${this.objects.length} objs`;
+
+        this.objects.forEach((obj) => {
+          const item = document.createElement('div');
+          item.className = 'outliner-item' + (obj === this.selectedObject ? ' selected' : '');
+          item.innerHTML = `<span>📦 ${obj.name}</span><span style="color:var(--text-muted);font-size:10px;">${obj.geometry.type.replace('Geometry','')}</span>`;
+          item.onclick = () => this.selectObject(obj);
+          list.appendChild(item);
+        });
+      }
+
+      exportGLB() {
+        const exporter = new GLTFExporter();
+        exporter.parse(
+          this.objects,
+          (result) => {
+            const blob = new Blob([result], { type: 'application/octet-stream' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'escena_neoblender_mcp.glb';
+            link.click();
+            this.setStatus('Escena exportada exitosamente a .GLB');
+          },
+          (err) => console.error(err),
+          { binary: true }
+        );
+      }
+
+      /* ========================================================
+         PROTOCOLO MCP (MODEL CONTEXT PROTOCOL) PARA AGENTES IA
+         ======================================================== */
+      initMCPBridge() {
+        const self = this;
+        window.MCP_BRIDGE = {
+          version: '1.0.0',
+          listTools() {
+            return [
+              { name: 'mcp_get_scene_graph', description: 'Devuelve todos los objetos 3D, posiciones y materiales PBR actuales.' },
+              { name: 'mcp_capture_viewport', description: 'Captura una imagen Base64 PNG del viewport actual para visión multimodal de la IA.' },
+              { name: 'mcp_spawn_pbr_mesh', description: 'Crea una nueva malla 3D con materiales físicos hiperrealistas.' },
+              { name: 'mcp_execute_three_code', description: 'Ejecuta código Three.js directo sobre la escena (acceso a THREE, scene, app).' }
+            ];
+          },
+          getSceneGraph() {
+            return {
+              timestamp: new Date().toISOString(),
+              camera: {
+                position: self.camera.position.toArray(),
+                target: self.orbit.target.toArray()
+              },
+              exposure: self.renderer.toneMappingExposure,
+              objects: self.objects.map((o) => ({
+                uuid: o.uuid,
+                name: o.name,
+                geometry: o.geometry.type,
+                position: o.position.toArray().map((n) => Number(n.toFixed(3))),
+                rotation: [o.rotation.x, o.rotation.y, o.rotation.z].map((n) => Number(n.toFixed(3))),
+                scale: o.scale.toArray().map((n) => Number(n.toFixed(3))),
+                material: {
+                  color: '#' + o.material.color.getHexString(),
+                  metalness: o.material.metalness,
+                  roughness: o.material.roughness,
+                  clearcoat: o.material.clearcoat,
+                  transmission: o.material.transmission,
+                  ior: o.material.ior
+                }
+              }))
+            };
+          },
+          captureViewport() {
+            self.renderer.render(self.scene, self.camera);
+            const dataUrl = self.renderer.domElement.toDataURL('image/png');
+            const box = document.getElementById('vision-box');
+            box.innerHTML = `<img src="${dataUrl}" alt="MCP Vision Snapshot" /><span class="vision-label">Capturado ${new Date().toLocaleTimeString()}</span>`;
+            return { mimeType: 'image/png', dataUrl };
+          },
+          handleJsonRpc(request) {
+            const { id, method, params } = request;
+            try {
+              let result;
+              if (method === 'tools/list') result = this.listTools();
+              else if (method === 'mcp_get_scene_graph') result = this.getSceneGraph();
+              else if (method === 'mcp_capture_viewport') result = this.captureViewport();
+              else if (method === 'mcp_spawn_pbr_mesh') {
+                const mesh = self.addPrimitive(params.type || 'sphere', params);
+                result = { status: 'created', name: mesh.name, uuid: mesh.uuid };
+              } else if (method === 'mcp_execute_three_code') {
+                const fn = new Function('THREE', 'scene', 'app', params.code);
+                const execOut = fn(THREE, self.scene, self);
+                self.refreshOutliner();
+                result = { status: 'executed', output: execOut ?? 'OK' };
+              } else {
+                throw new Error(`Método MCP desconocido: ${method}`);
+              }
+              return { jsonrpc: '2.0', id, result };
+            } catch (err) {
+              return { jsonrpc: '2.0', id, error: { code: -32603, message: err.message } };
+            }
+          }
+        };
+
+        // Precargar un ejemplo en la consola MCP para que el usuario o la IA lo pruebe con 1 clic
+        document.getElementById('mcp-console').value = JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "mcp_spawn_pbr_mesh",
+          params: {
+            type: "torusknot",
+            name: "Escultura_IA_MCP",
+            color: "#10b981",
+            metalness: 0.9,
+            roughness: 0.05,
+            clearcoat: 1.0,
+            x: -2.2,
+            y: 1.3,
+            z: 0
+          }
+        }, null, 2);
+      }
+
+      mcpCaptureVision() {
+        const snap = window.MCP_BRIDGE.captureViewport();
+        this.setStatus(`Visión IA capturada (${Math.round(snap.dataUrl.length / 1024)} KB en Base64 listos para MCP).`);
+      }
+
+      mcpDumpScene() {
+        const graph = window.MCP_BRIDGE.getSceneGraph();
+        document.getElementById('mcp-console').value = JSON.stringify(graph, null, 2);
+        this.setStatus('Scene Graph serializado en la consola MCP.');
+      }
+
+      runMCPConsoleCommand() {
+        const raw = document.getElementById('mcp-console').value.trim();
+        try {
+          const payload = JSON.parse(raw);
+          const response = window.MCP_BRIDGE.handleJsonRpc(payload);
+          this.setStatus(`Comando MCP ejecutado: ${payload.method}`);
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(response));
+          }
+        } catch (e) {
+          this.setStatus(`Error JSON-RPC: ${e.message}`);
+        }
+      }
+
+      connectMCPSocket() {
+        const url = document.getElementById('ws-url').value;
+        try {
+          this.ws = new WebSocket(url);
+          this.ws.onopen = () => this.setStatus(`Conectado al servidor MCP en ${url}`);
+          this.ws.onmessage = (event) => {
+            const req = JSON.parse(event.data);
+            const res = window.MCP_BRIDGE.handleJsonRpc(req);
+            this.ws.send(JSON.stringify(res));
+          };
+          this.ws.onerror = () => this.setStatus(`Modo Local Activo (Sin daemon WebSocket en ${url})`);
+        } catch (err) {
+          this.setStatus(`Error al conectar WebSocket: ${err.message}`);
+        }
+      }
+
+      setStatus(msg) {
+        document.getElementById('status-bar').textContent = msg;
+      }
+
+      onResize() {
+        this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+      }
+
+      animate() {
+        requestAnimationFrame(() => this.animate());
+        this.orbit.update();
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
+
+    window.app = new NeoBlenderMCPStudio();
+  </script>
+</body>
+</html>
