@@ -9,6 +9,7 @@ import * as THREE from 'three';
     import { CharacterWorkflow } from './character-workflow.js';
     import { AnimationEditor } from './animation-editor.js';
     import { createFreeCharacter } from './procedural-character.js';
+    import { runFreeCommand } from './free-command-assistant.js';
 
     class Creador3DOnlineStudio {
       constructor() {
@@ -561,6 +562,18 @@ import * as THREE from 'three';
       pauseAnimation() { this.characterWorkflow.pause(); this.setStatus('Animación en pausa.'); }
       resumeAnimation() { this.characterWorkflow.resume(); this.setStatus('Animación reanudada.'); }
       setAnimationSpeed(value) { this.characterWorkflow.setSpeed(value); }
+
+      submitFreeCommand() {
+        try {
+          const raw = document.getElementById('free-commands').value;
+          const result = runFreeCommand(this, raw);
+          document.getElementById('free-commands-feedback').textContent = result.join(' · ');
+          this.setStatus(result.join(' · '));
+        } catch (error) {
+          document.getElementById('free-commands-feedback').textContent = error.message;
+          this.setStatus('Comando guiado: ' + error.message);
+        }
+      }
 
       createWebCharacter(type) {
         try {
