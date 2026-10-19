@@ -4,6 +4,8 @@ import * as THREE from 'three';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+    import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
     import { CharacterWorkflow } from './character-workflow.js';
     import { AnimationEditor } from './animation-editor.js';
 
@@ -124,7 +126,7 @@ import * as THREE from 'three';
         this.container.addEventListener('drop', (e) => {
           e.preventDefault();
           const file = e.dataTransfer.files[0];
-          if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
+          if (file && (/\.(glb|gltf|obj|fbx)$/i.test(file.name))) {
             this.loadGLBFile(file);
           }
         });
@@ -457,29 +459,42 @@ import * as THREE from 'three';
       }
 
       loadGLBFile(file) {
-        if (!/\.(glb|gltf)$/i.test(file.name)) {
-          this.setStatus('Selecciona un archivo .glb o .gltf.');
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['glb', 'gltf', 'obj', 'fbx'].includes(ext)) {
+          this.setStatus('Importación disponible para .glb, .gltf, .obj y .fbx.');
           return;
         }
         if (file.size > 100 * 1024 * 1024) {
-          this.setStatus('El archivo excede el límite de carga de 100 MB.');
+          this.setStatus('El archivo supera el límite de 100 MB.');
           return;
         }
         const reader = new FileReader();
-        reader.onerror = () => this.setStatus('Error al leer el modelo local.');
-        reader.onload = (event) => {
-          const loader = new GLTFLoader();
-          loader.parse(event.target.result, '', (gltf) => {
-            const root = gltf.scene;
-            root.name = file.name.replace(/\.(glb|gltf)$/i, '');
-            this.registerMesh(root, true);
-            this.characterWorkflow.registerImportedModel(root, gltf.animations || []);
-            this.logAIAction('Importado GLB ' + root.name);
-          }, (error) => {
-            this.setStatus('Error al importar: ' + error.message + '. Usa GLB autocontenido; GLTF con texturas externas requiere empaquetarlo.');
-          });
+        reader.onerror = () => this.setStatus('Error leyendo el archivo importado.');
+        const imported = (root, clips = []) => {
+          root.name = file.name.replace(/\.(glb|gltf|obj|fbx)$/i, '');
+          this.registerMesh(root, true);
+          this.characterWorkflow.registerImportedModel(root, clips);
+          this.logAIAction('Importado ' + ext.toUpperCase() + ' ' + root.name);
+          this.setStatus('Importado: ' + root.name + '. Ahora puedes animarlo con poses y fotogramas.');
         };
-        reader.readAsArrayBuffer(file);
+        reader.onload = event => {
+          try {
+            if (ext === 'obj') {
+              imported(new OBJLoader().parse(event.target.result));
+            } else if (ext === 'fbx') {
+              const root = new FBXLoader().parse(event.target.result, '');
+              imported(root, root.animations || []);
+            } else {
+              new GLTFLoader().parse(event.target.result, '', gltf => {
+                imported(gltf.scene, gltf.animations || []);
+              }, err => this.setStatus('Error en GLB/GLTF: ' + err.message + '. Empaqueta texturas externas.'));
+            }
+          } catch (err) {
+            this.setStatus('No se pudo importar ' + ext.toUpperCase() + ': ' + err.message);
+          }
+        };
+        if (ext === 'obj') reader.readAsText(file);
+        else reader.readAsArrayBuffer(file);
       }
 
       exportGLB() {
