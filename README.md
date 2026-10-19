@@ -1,4 +1,4 @@
-# Creador 3D Online · Laboratorio de personajes 1.2 (rama de desarrollo)
+# Creador 3D Online · Estudio de animación libre 1.3
 
 Estudio web **gratuito** basado en Three.js r160 para editar modelos GLB, previsualizar animaciones e intercambiar información con un agente MCP local autorizado. La base pública original se conserva en `main` hasta revisar esta rama.
 
@@ -53,3 +53,51 @@ npm run check
 ```
 
 La bitácora de agentes está en `MCP_AI_GUIDE.md`. Cada modificación requiere registrar cambios, pruebas efectivas y pendientes. Las operaciones de escultura avanzada, generación 2D→3D, humano a partir de foto y animación de batalla creada automáticamente **son trabajo futuro**, no funciones entregadas en 1.2.
+
+---
+
+## Versión 1.3 — Animar modelos 3D importados gratis (sin Tripo/Hunyuan/Meshy)
+
+Esta actualización convierte NeoBlender de un simple reproductor de animaciones en un editor básico de **poses y fotogramas clave** usando Three.js, sin llamadas a servicios de generación de pago.
+
+**Formatos importados:** GLB/GLTF autocontenidos, OBJ y FBX. Los OBJ generalmente no contienen rigs ni animaciones; FBX puede incluir esqueletos y clips (dependiendo del archivo). Archivos con texturas externas requieren empaquetar los recursos o conversiones posteriores.
+
+### Cómo animar un GLB con esqueleto
+
+1. Importa el modelo GLB o FBX y abre **Animación libre · Huesos y fotogramas clave**.
+2. Marca **Mostrar huesos en Outliner**. Selecciona un hueso (por ejemplo, brazo o antebrazo).
+3. Da nombre a la acción (Ataque, Defensa, Caminar), define duración y pulsa **Crear acción**.
+4. En tiempo 0, coloca el hueso en la pose inicial y pulsa **Registrar pose**.
+5. Mueve el control de tiempo hasta, por ejemplo, 0.5 segundos, rota el hueso y pulsa **Registrar pose**.
+6. Sigue registrando las poses necesarias y pulsa **Guardar clip**.
+7. En la lista de clips del modelo selecciona el nuevo movimiento para reproducirlo.
+8. Pulsa **Exportar GLB** y comprueba que el modelo conserva la animación en otro visor.
+
+### Cómo animar un modelo sin esqueleto
+
+- Si es una sola malla: genera los presets gratuitos **Reposo**, **Ataque**, **Defensa**, **Golpe** o **Derrota** que mueven el objeto entero.
+- Si tiene piezas independientes: selecciona una extremidad, escribe la coordenada mundial de su articulación y pulsa **Crear pivote**. Selecciona ese pivote y registra sus poses.
+- Si el cuerpo es una sola malla sin huesos **no se pueden doblar brazos de forma anatómica** con pivotes. Necesita segmentación, armature y skinning; el rigging semiautomático con pesos por vértice es la siguiente fase pendiente. Esta versión no promete que cualquier figura pueda articularse de inmediato.
+
+### Acceso por IA mediante herramientas propias
+
+El MCP local ofrece herramientas de lectura y creación tipada:
+`mcp_animation_inspect`,
+`mcp_animation_create`,
+`mcp_animation_keyframe`,
+`mcp_animation_commit`,
+`mcp_animation_preset`,
+`mcp_animation_pivot` y
+`mcp_animation_play`.
+
+Una IA con cliente MCP local configurado puede inspeccionar los huesos, crear acciones, asignar poses numéricas, verlas y exportarlas mediante la interfaz. **Este ChatGPT todavía no tiene acceso directo a tu navegador local desde la nube**. No exponemos evaluación remota de JavaScript.
+
+### Próxima etapa de código libre
+
+1. Probar exportación e importación de GLB con animaciones de huesos reales.
+2. Undo/Redo, guardado de proyectos y exploración de mallas.
+3. Rigging humanoide guiado sobre mallas sin esqueleto: ubicar articulaciones, generar armature, asignar pesos con visualización y correcciones.
+4. Timeline multicanal, curvas de interpolación, biblioteca abierta de movimiento.
+5. Optimización de texturas, LOD y GLB <=15 MiB según medida real.
+
+No integra APIs ni suscripciones obligatorias de Tripo, Hunyuan3D, Meshy ni otros generadores 3D.
