@@ -130,6 +130,8 @@
       <img id="reference-preview" alt="Referencia para crear personaje" />
       <label for="character-prompt">Describe cualquier modelo, criatura, objeto o escena 3D</label>
       <textarea class="character-prompt" id="character-prompt" placeholder="Ej.: gato antropomorfo con armadura, dragón de cuatro patas, robot de ajedrez, árbol, torre de castillo, vehículo…"></textarea>
+      <button onclick="app.buildAssetFromPrompt()">Crear base reconocida desde descripción</button>
+      <p class="character-note">Sin IA conectada reconocerá únicamente plantillas iniciales. Una IA con visión podrá diseñar planos universales más específicos a partir de la imagen y esta descripción.</p>
       <label for="character-use">Destino</label>
       <select id="character-use"><option value="chess_game">Ajedrez / videojuego</option><option value="webar">WebAR · 15 MB</option><option value="cinematic">Render cinematográfico</option></select>
       <div class="character-actions">
