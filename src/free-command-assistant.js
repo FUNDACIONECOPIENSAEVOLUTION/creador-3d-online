@@ -7,6 +7,8 @@ export function planFreeCommand(raw) {
   if (typeof raw !== 'string' || raw.length > 1000) throw new Error('La instrucción debe tener hasta 1000 caracteres.');
   const input = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   if (!input.trim()) throw new Error('Escribe una instrucción.');
+  if (/\b(hiperrealista|fotorrealista|fotografico|a partir de (mi |una |la )?(foto|imagen)|transforma (mi |la )?foto)\b/.test(input))
+    throw new Error('La creación fotorrealista desde una imagen aún no está soportada. Puedes crear un maniquí articulado gratuito y mejorar sus materiales y anatomía.');
   const commands = [];
   if (/\b(angel|guardian alado|guardian con alas)\b/.test(input) &&
       /\b(crea|crear|genera|generar|haz|hacer|quiero|necesito)\b/.test(input))
