@@ -5,6 +5,7 @@ import * as THREE from 'three';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { CharacterWorkflow } from './character-workflow.js';
+    import { AnimationEditor } from './animation-editor.js';
 
     class Creador3DOnlineStudio {
       constructor() {
@@ -14,6 +15,7 @@ import * as THREE from 'three';
         this.ws = null;
         this.aiActionHistory = [];
         this.characterWorkflow = new CharacterWorkflow(this);
+        this.animationEditor = new AnimationEditor(this);
 
         this.initEngine();
         this.initLightingAndHDRI();
@@ -295,6 +297,7 @@ import * as THREE from 'three';
         this.transformControl.attach(obj);
         this.characterWorkflow.selectModel(obj);
         this.syncInspectorFromObject();
+        this.animationEditor.updateControls();
         this.refreshOutliner();
         this.setStatus(`Seleccionado: ${obj.name}`);
       }
@@ -302,6 +305,10 @@ import * as THREE from 'three';
       deleteSelected() {
         const target = this.selectedObject;
         if (!target || target.name === 'Studio_Floor') return;
+        if (target.isBone) {
+          this.setStatus('No se puede borrar un hueso de un rig importado: destruiría la deformación del personaje.');
+          return;
+        }
         this.transformControl.detach();
         this.characterWorkflow.forget(target);
         if (target.parent) target.parent.remove(target);
@@ -370,21 +377,23 @@ import * as THREE from 'three';
 
       updateSelectedMaterial() {
         const obj = this.selectedObject;
-        if (!obj || !obj.material) return;
-        obj.material.color.set(document.getElementById('mat-color').value);
-        obj.material.metalness = parseFloat(document.getElementById('mat-metalness').value);
-        obj.material.roughness = parseFloat(document.getElementById('mat-roughness').value);
-        obj.material.clearcoat = parseFloat(document.getElementById('mat-clearcoat').value);
-        obj.material.transmission = parseFloat(document.getElementById('mat-transmission').value);
-        obj.material.ior = parseFloat(document.getElementById('mat-ior').value);
-        obj.material.wireframe = document.getElementById('mat-wireframe').checked;
-        obj.material.needsUpdate = true;
+        if (!obj?.material) { this.setStatus('Selecciona una malla con material.'); return; }
+        const material = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+        if (!material?.color) return;
+        material.color.set(document.getElementById('mat-color').value);
+        material.metalness = parseFloat(document.getElementById('mat-metalness').value);
+        material.roughness = parseFloat(document.getElementById('mat-roughness').value);
+        material.clearcoat = parseFloat(document.getElementById('mat-clearcoat').value);
+        material.transmission = parseFloat(document.getElementById('mat-transmission').value);
+        material.ior = parseFloat(document.getElementById('mat-ior').value);
+        material.wireframe = document.getElementById('mat-wireframe').checked;
+        material.needsUpdate = true;
       }
 
       applyMaterialPreset(preset) {
         const obj = this.selectedObject;
-        if (!obj || !obj.material) return;
-        const m = obj.material;
+        const m = Array.isArray(obj?.material) ? obj.material[0] : obj?.material;
+        if (!m?.color) { this.setStatus('Selecciona una malla con material.'); return; }
         const presets = {
           gold:     { color: '#ffb703', metalness: 1.0, roughness: 0.08, clearcoat: 0.5, transmission: 0.0, ior: 1.5 },
           glass:    { color: '#ffffff', metalness: 0.0, roughness: 0.02, clearcoat: 1.0, transmission: 0.96, ior: 1.52 },
@@ -416,7 +425,7 @@ import * as THREE from 'three';
         let count = 0;
         for (const root of this.objects) {
           root.traverse((obj) => {
-            if (obj.isBone || obj.isLight || obj.isCamera) return;
+            if ((obj.isBone && !document.getElementById('show-bones')?.checked) || obj.isLight || obj.isCamera) return;
             if (count >= 450) return;
             count++;
             let depth = 0, parent = obj.parent;
@@ -525,6 +534,61 @@ import * as THREE from 'three';
       resumeAnimation() { this.characterWorkflow.resume(); this.setStatus('Animación reanudada.'); }
       setAnimationSpeed(value) { this.characterWorkflow.setSpeed(value); }
 
+      animationErrorSafe(action) {
+        try {
+          const response = action();
+          this.setStatus(typeof response === 'string' ? response : JSON.stringify(response));
+          this.refreshOutliner();
+          return response;
+        } catch (error) {
+          this.setStatus('Animación: ' + error.message);
+          return null;
+        }
+      }
+
+      createAnimationAction() {
+        return this.animationErrorSafe(() => this.animationEditor.createAction(
+          document.getElementById('new-animation-name').value,
+          Number(document.getElementById('new-animation-duration').value)
+        ));
+      }
+
+      addAnimationKeyframe() {
+        return this.animationErrorSafe(() => this.animationEditor.poseAndRecord({
+          time: Number(document.getElementById('keyframe-time').value)
+        }));
+      }
+
+      removeAnimationKeyframe() {
+        return this.animationErrorSafe(() => this.animationEditor.deleteFrame(
+          this.selectedObject?.uuid, Number(document.getElementById('keyframe-time').value)
+        ));
+      }
+
+      saveAnimationAction() {
+        return this.animationErrorSafe(() => this.animationEditor.saveAction());
+      }
+
+      createAnimationPreset() {
+        return this.animationErrorSafe(() => this.animationEditor.makeRigidPreset(
+          document.getElementById('animation-preset').value
+        ));
+      }
+
+      createArticulation() {
+        return this.animationErrorSafe(() => this.animationEditor.addPivot({
+          worldPosition: ['pivot-x', 'pivot-y', 'pivot-z'].map(id => Number(document.getElementById(id).value))
+        }));
+      }
+
+      previewAnimationTime(time) {
+        const t = Number(time);
+        if (!Number.isFinite(t)) return;
+        this.animationEditor.playhead = t;
+        this.characterWorkflow.seek(t);
+        this.animationEditor.updateControls();
+      }
+
       getSceneGraphData() {
         const objects = [];
         this.objects.forEach(root => root.traverse(o => {
@@ -573,7 +637,7 @@ import * as THREE from 'three';
       initMCPBridge() {
         const self = this;
         window.MCP_BRIDGE = {
-          version: '1.2.0',
+          version: '1.3.0',
           repository: 'https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online',
           listTools() {
             return [
@@ -583,7 +647,12 @@ import * as THREE from 'three';
               { name: 'mcp_spawn_pbr_mesh', description: 'Crea una nueva malla 3D con shader físico MeshPhysicalMaterial.' },
               { name: 'mcp_modify_object', description: 'Modifica posición, escala o material de un objeto existente.' },
               { name: 'mcp_get_creation_brief', description: 'Lee el encargo de creación de personaje y los requisitos.' },
-              { name: 'mcp_get_reference_image', description: 'Obtiene la imagen de referencia en JPEG para análisis visual.' }
+              { name: 'mcp_get_reference_image', description: 'Obtiene la imagen de referencia en JPEG para análisis visual.' },
+              { name: 'mcp_animation_inspect', description: 'Inspecciona huesos, articulaciones, clips y fotogramas del modelo.' },
+              { name: 'mcp_animation_create', description: 'Crear una acción nueva para un modelo.' },
+              { name: 'mcp_animation_keyframe', description: 'Registrar fotograma clave de un hueso o pieza individual con tiempo, posición y rotación.' },
+              { name: 'mcp_animation_commit', description: 'Convertir los fotogramas a AnimationClip glTF exportable.' },
+              { name: 'mcp_animation_preset', description: 'Movimiento básico gratis de pieza completa.' }
             ];
           },
           getSceneGraph() {
@@ -695,6 +764,11 @@ import * as THREE from 'three';
               else if (method === 'mcp_capture_quad_view') result = this.captureQuadView();
               else if (method === 'mcp_get_creation_brief') result = self.characterWorkflow.getBrief();
               else if (method === 'mcp_get_reference_image') result = self.characterWorkflow.getImage();
+              else if (method === 'mcp_animation_inspect') result = self.animationEditor.inspect();
+              else if (method === 'mcp_animation_create') result = self.animationEditor.createAction(params.name, params.duration);
+              else if (method === 'mcp_animation_keyframe') result = self.animationEditor.poseAndRecord(params);
+              else if (method === 'mcp_animation_commit') result = self.animationEditor.saveAction();
+              else if (method === 'mcp_animation_preset') result = self.animationEditor.makeRigidPreset(params.kind);
               else if (method === 'mcp_spawn_pbr_mesh') {
                 const mesh = self.addPrimitive(params.type || 'sphere', params);
                 result = { status: 'created', name: mesh.name, uuid: mesh.uuid };
