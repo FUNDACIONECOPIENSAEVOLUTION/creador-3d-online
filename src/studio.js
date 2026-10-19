@@ -10,6 +10,8 @@ import * as THREE from 'three';
     import { AnimationEditor } from './animation-editor.js';
     import { createFreeCharacter } from './procedural-character.js';
     import { runFreeCommand } from './free-command-assistant.js';
+    import { buildAssetBlueprint, validateAssetBlueprint } from './asset-blueprint.js';
+    import { makePresetBlueprint, matchPreset } from './asset-presets.js';
 
     class Creador3DOnlineStudio {
       constructor() {
@@ -563,6 +565,44 @@ import * as THREE from 'three';
       resumeAnimation() { this.characterWorkflow.resume(); this.setStatus('Animación reanudada.'); }
       setAnimationSpeed(value) { this.characterWorkflow.setSpeed(value); }
 
+      copyPresetBlueprint() {
+        try {
+          const id = document.getElementById('asset-preset').value;
+          const blueprint = makePresetBlueprint(id);
+          document.getElementById('asset-blueprint').value = JSON.stringify(blueprint, null, 2);
+          this.setStatus('Plano EcoBlend cargado. Puedes ajustar piezas, tamaños y materiales.');
+          return blueprint;
+        } catch (error) {
+          this.setStatus('Plano EcoBlend: ' + error.message);
+          return {error: error.message};
+        }
+      }
+      createAssetPreset() {
+        try { return this.buildUniversalAsset(makePresetBlueprint(document.getElementById('asset-preset').value)); }
+        catch (error) {this.setStatus('Plantilla: '+error.message);return {error:error.message};}
+      }
+      buildAssetFromEditor() {
+        try {
+          const text = document.getElementById('asset-blueprint').value;
+          if (text.length > 128 * 1024) throw new Error('Máximo 128 KB para un plano JSON.');
+          return this.buildUniversalAsset(JSON.parse(text));
+        } catch(error) {this.setStatus('Plano: '+error.message);return {error:error.message};}
+      }
+      buildUniversalAsset(blueprint) {
+        const {object,metadata} = buildAssetBlueprint(blueprint,this.qualityProfile);
+        object.position.x = this.objects.filter(o => o.userData?.ecoblendAssetVersion).length * 2.4;
+        this.registerMesh(object,true);
+        this.characterWorkflow.ensureModel(object);
+        this.logAIAction('Modelo universal EcoBlend creado: '+object.name);
+        this.setStatus('Creado '+object.name+' ('+metadata.parts+' partes). Se puede animar y exportar en GLB.');
+        return {name:object.name,uuid:object.uuid,...metadata};
+      }
+      buildAssetFromDescription(description) {
+        const id = matchPreset(description);
+        if (!id) throw new Error('La descripción requiere que una IA proponga un plano de piezas, o construirlo manualmente. Ejemplos disponibles: gato antropomorfo, dragón, robot, silla, árbol, vehículo, torre.');
+        return this.buildUniversalAsset(makePresetBlueprint(id));
+      }
+
       submitFreeCommand() {
         try {
           const raw = document.getElementById('free-commands').value;
@@ -714,7 +754,7 @@ import * as THREE from 'three';
       initMCPBridge() {
         const self = this;
         window.MCP_BRIDGE = {
-          version: '1.3.0',
+          version: '1.4.0',
           repository: 'https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online',
           listTools() {
             return [
@@ -732,6 +772,9 @@ import * as THREE from 'three';
               { name: 'mcp_animation_preset', description: 'Movimiento básico gratis de pieza completa.' },
               { name: 'mcp_animation_play', description: 'Previsualizar un clip sobre el modelo; opcional instante de tiempo.' },
               { name: 'mcp_character_create', description: 'Crear una base humana o un ángel articulado con geometría ligera en la propia web, sin IA de pago.' },
+              { name: 'mcp_asset_validate', description: 'Validar JSON universal de figura, piezas y materiales.' },
+              { name: 'mcp_asset_build', description: 'Construir figura desde un plano 3D autorizado y validado.' },
+              { name: 'mcp_asset_preset', description: 'Crear una plantilla abierta de criatura, objeto o escenario.' },
               { name: 'mcp_set_quality', description: 'Cambiar perfil ligero, equilibrado o visual.' },
               { name: 'mcp_animation_pivot', description: 'Crear articulación en una extremidad de malla separada.' }
             ];
@@ -850,6 +893,12 @@ import * as THREE from 'three';
                 result = self.createWebCharacter(params.type);
               }
               else if (method === 'mcp_set_quality') result = self.setQualityProfile(params.profile);
+              else if (method === 'mcp_asset_validate') {
+                const plan = validateAssetBlueprint(params.blueprint);
+                result = {valid:true,name:plan.name,parts:plan.parts.length,category:plan.category};
+              }
+              else if (method === 'mcp_asset_build') result = self.buildUniversalAsset(params.blueprint);
+              else if (method === 'mcp_asset_preset') result = self.buildUniversalAsset(makePresetBlueprint(params.id));
               else if (method === 'mcp_animation_inspect') result = self.animationEditor.inspect();
               else if (method === 'mcp_animation_create') result = self.animationEditor.createAction(
                 params.name, params.duration,
