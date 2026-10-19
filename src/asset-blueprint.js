@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export const ASSET_VERSION = 'ecoblend.asset.v1';
 export const ASSET_CATEGORIES = ['human', 'anthropomorphic', 'animal', 'creature', 'robot', 'vehicle', 'building', 'prop', 'abstract', 'other'];
-export const ASSET_SHAPES = ['box', 'sphere', 'cylinder', 'cone', 'capsule', 'torus'];
+export const ASSET_SHAPES = ['box', 'sphere', 'cylinder', 'cone', 'capsule', 'torus', 'mesh'];
 const scalar = (v, min, max, name) => {
   if (typeof v !== 'number' || !Number.isFinite(v) || v < min || v > max) throw new Error(name + ' fuera de rango.');
   return v;
@@ -24,6 +24,8 @@ export function validateAssetBlueprint(blueprint) {
   if (!Array.isArray(blueprint.parts) || !blueprint.parts.length || blueprint.parts.length > 120)
     throw new Error('Un plano 3D debe contener entre 1 y 120 partes.');
   const known = new Set(['root']);
+  let totalVertices = 0;
+  let totalTriangles = 0;
   const parts = blueprint.parts.map((part, i) => {
     if (!part || typeof part !== 'object' || Array.isArray(part)) throw new Error('Parte ' + i + ' inválida.');
     const id = label(part.id, 'parts['+i+'].id', 60);
@@ -43,8 +45,30 @@ export function validateAssetBlueprint(blueprint) {
     const scale = vector(part.scale,[1,1,1],0.005,25,'scale');
     const metalness = scalar(part.metalness ?? 0, 0,1,'metalness');
     const roughness = scalar(part.roughness ?? .7,0,1,'roughness');
+    let vertices;
+    let faces;
+    if (kind === 'mesh' && shape === 'mesh') {
+      if (!Array.isArray(part.vertices) || part.vertices.length < 3 || part.vertices.length > 3000)
+        throw new Error('Una malla personalizada admite entre 3 y 3000 vértices.');
+      if (!Array.isArray(part.faces) || part.faces.length < 1 || part.faces.length > 6000)
+        throw new Error('Una malla personalizada admite entre 1 y 6000 caras triangulares.');
+      vertices = part.vertices.map((v, vIndex) => vector(v, undefined, -25, 25, 'vertices['+vIndex+']'));
+      faces = part.faces.map((face, faceIndex) => {
+        if (!Array.isArray(face) || face.length !== 3 ||
+            !face.every(i => Number.isInteger(i) && i >= 0 && i < vertices.length) ||
+            new Set(face).size !== 3)
+          throw new Error('Cara ' + faceIndex + ' debe indicar 3 índices válidos y distintos.');
+        return [...face];
+      });
+      totalVertices += vertices.length;
+      totalTriangles += faces.length;
+      if (totalVertices > 24000 || totalTriangles > 48000)
+        throw new Error('La escena supera el presupuesto de mallas personalizadas para equipos modestos.');
+    }
     known.add(id);
-    return {id, name: part.name ? label(part.name,'name') : id, parent, kind, shape, position,rotationDeg:rotation,scale,color,metalness,roughness};
+    return {id, name: part.name ? label(part.name,'name') : id, parent, kind, shape, position,
+      rotationDeg:rotation,scale,color,metalness,roughness,
+      ...(vertices ? {vertices,faces} : {})};
   });
   return {version:ASSET_VERSION,name,category:blueprint.category,parts};
 }
@@ -74,10 +98,18 @@ export function buildAssetBlueprint(blueprint, quality = 'low') {
     }
     return geometry.get(shape);
   };
+  function customGeometry(part) {
+    const result = new THREE.BufferGeometry();
+    result.setAttribute('position', new THREE.Float32BufferAttribute(part.vertices.flat(), 3));
+    result.setIndex(part.faces.flat());
+    result.computeVertexNormals();
+    result.computeBoundingSphere();
+    return result;
+  }
   for (const part of plan.parts) {
     const node = part.kind === 'joint'
       ? new THREE.Group()
-      : new THREE.Mesh(getGeometry(part.shape),new THREE.MeshStandardMaterial({
+      : new THREE.Mesh(part.shape === 'mesh' ? customGeometry(part) : getGeometry(part.shape),new THREE.MeshStandardMaterial({
           color: part.color,metalness:part.metalness,roughness:part.roughness
         }));
     node.name=part.name;
