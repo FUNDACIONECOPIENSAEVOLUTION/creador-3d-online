@@ -64,3 +64,22 @@ test('Una IA puede describir una figura original por partes y exportarla como GL
   assert.equal(result.animations[0].name,'Tilt');
   assert.ok(result.scene.getObjectByName('neck'));
 });
+
+test('La IA puede aportar vértices y triángulos propios para siluetas no primitivas',()=>{
+  const blueprint={version:ASSET_VERSION,name:'Figura_Bespoke',category:'abstract',parts:[{
+    id:'pieza',shape:'mesh',color:'#ba814f',
+    vertices:[[-.5,0,0],[.5,0,0],[.6,1,0],[-.3,1,.2],[0,.2,1]],
+    faces:[[0,1,2],[0,2,3],[0,1,4],[1,2,4]]
+  }]};
+  const {object}=buildAssetBlueprint(blueprint,'low');
+  const mesh=object.getObjectByName('pieza');
+  assert.equal(mesh.geometry.getAttribute('position').count,5);
+  assert.equal(mesh.geometry.index.count,12);
+  assert.ok(mesh.geometry.getAttribute('normal'));
+  assert.throws(()=>validateAssetBlueprint({...blueprint,parts:[{
+    ...blueprint.parts[0], faces:[[0,1,77777]]
+  }]}),/Cara 0/);
+  assert.throws(()=>validateAssetBlueprint({...blueprint,parts:[{
+    ...blueprint.parts[0],vertices:[[0,0,0],[NaN,0,0],[0,1,0]]
+  }]}),/fuera de rango/);
+});
