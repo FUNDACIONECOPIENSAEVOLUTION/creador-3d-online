@@ -10,7 +10,7 @@
   "scripts": {
     "start-mcp": "node mcp-server.js",
     "test": "node --test tests/*.test.cjs tests/*.test.mjs",
-    "check": "node --check mcp-server.js && node --check src/studio.js && node --check src/character-workflow.js && node --check src/animation-editor.js && node --check src/procedural-character.js && npm test"
+    "check": "node --check mcp-server.js && node --check src/studio.js && node --check src/character-workflow.js && node --check src/animation-editor.js && node --check src/procedural-character.js && node --check src/free-command-assistant.js && npm test"
   },
   "dependencies": {
     "ws": "^8.18.0",
