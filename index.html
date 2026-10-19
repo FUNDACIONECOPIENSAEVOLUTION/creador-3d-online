@@ -41,6 +41,7 @@
       <input type="file" id="glb-upload" accept=".glb,.gltf,.obj,.fbx" style="display:none" onchange="app.importGLB(event)" />
       <button onclick="document.getElementById('glb-upload').click()">Importar GLB / OBJ / FBX</button>
       <button onclick="app.exportGLB()">Exportar .GLB</button>
+       <button onclick="app.exportSelectedGLB()" title="Descarga únicamente el personaje o modelo seleccionado con sus clips">Exportar personaje .GLB</button>
     </div>
   </header>
 
