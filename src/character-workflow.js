@@ -57,7 +57,7 @@ export class CharacterWorkflow {
       rigRequired: true,
       animationDesired: true,
       referenceImageAvailable: !!this.imageDataUrl,
-      instructions: 'Crear en una herramienta 3D autorizada, revisar anatomía, exportar GLB con rig y clips; importar el GLB final en el estudio web.',
+      instructions: 'Crear usando herramientas propias de NeoBlender y/o Blender+MPFB libre, revisar anatomía, rig y clips; exportar GLB. Evitar APIs comerciales de pago.',
       limitations: 'Este visor no genera una malla humana a partir de una imagen por sí mismo.'
     };
   }
@@ -116,6 +116,14 @@ export class CharacterWorkflow {
 
   getClipsFor(root) {
     return this.animationSets.get(root.uuid)?.clips || [];
+  }
+
+  stopForEdit(root) {
+    const data = this.animationSets.get(root.uuid);
+    if (data) {
+      data.mixer.stopAllAction();
+      data.mixer.timeScale = 1;
+    }
   }
 
   selectModel(obj) {
