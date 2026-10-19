@@ -652,7 +652,8 @@ import * as THREE from 'three';
               { name: 'mcp_animation_create', description: 'Crear una acción nueva para un modelo.' },
               { name: 'mcp_animation_keyframe', description: 'Registrar fotograma clave de un hueso o pieza individual con tiempo, posición y rotación.' },
               { name: 'mcp_animation_commit', description: 'Convertir los fotogramas a AnimationClip glTF exportable.' },
-              { name: 'mcp_animation_preset', description: 'Movimiento básico gratis de pieza completa.' }
+              { name: 'mcp_animation_preset', description: 'Movimiento básico gratis de pieza completa.' },
+              { name: 'mcp_animation_pivot', description: 'Crear articulación en una extremidad de malla separada.' }
             ];
           },
           getSceneGraph() {
@@ -765,10 +766,14 @@ import * as THREE from 'three';
               else if (method === 'mcp_get_creation_brief') result = self.characterWorkflow.getBrief();
               else if (method === 'mcp_get_reference_image') result = self.characterWorkflow.getImage();
               else if (method === 'mcp_animation_inspect') result = self.animationEditor.inspect();
-              else if (method === 'mcp_animation_create') result = self.animationEditor.createAction(params.name, params.duration);
+              else if (method === 'mcp_animation_create') result = self.animationEditor.createAction(
+                params.name, params.duration,
+                params.rootUuid ? self.animationEditor.resolve(params.rootUuid) : self.selectedObject
+              );
               else if (method === 'mcp_animation_keyframe') result = self.animationEditor.poseAndRecord(params);
               else if (method === 'mcp_animation_commit') result = self.animationEditor.saveAction();
               else if (method === 'mcp_animation_preset') result = self.animationEditor.makeRigidPreset(params.kind);
+              else if (method === 'mcp_animation_pivot') result = self.animationEditor.addPivot(params);
               else if (method === 'mcp_spawn_pbr_mesh') {
                 const mesh = self.addPrimitive(params.type || 'sphere', params);
                 result = { status: 'created', name: mesh.name, uuid: mesh.uuid };
