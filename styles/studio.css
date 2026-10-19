@@ -264,3 +264,26 @@
 .character-actions button{white-space:normal;min-height:32px}
 .animation-picker{width:100%;white-space:normal}
 @media(max-width:850px){body{grid-template-columns:200px minmax(270px,1fr) 265px}.toolbar{overflow-x:auto}.panel-left,.panel-right{min-width:0}}
+
+
+/* Accesibilidad de NeoBlender en teléfonos y pantallas estrechas. */
+#free-characters button { white-space: normal; }
+#quality-profile { width: 100%; white-space: normal; min-height: 32px; }
+@media (max-width: 720px) {
+  html, body { min-height: 100%; height: auto; }
+  body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(320px, 55svh) auto auto auto;
+    overflow: auto;
+  }
+  header { grid-column: 1; grid-row: 1; flex-wrap: wrap; gap: 5px; padding: 8px; min-height: 85px; }
+  .toolbar { width: 100%; overflow-x: auto; }
+  main#viewport-container { grid-column: 1; grid-row: 2; width: 100%; min-height: 320px; }
+  #viewport-overlay { font-size: 10px; right: 8px; left: 8px; }
+  .panel-right { grid-column: 1; grid-row: 3; overflow-y: visible; }
+  .panel-left { grid-column: 1; grid-row: 4; min-height: 330px; max-height: 440px; overflow-y: auto; }
+  #outliner { height: 160px; min-height: 160px; }
+  .mcp-container { min-height: 230px; }
+  footer { grid-column: 1; grid-row: 5; font-size: 9px; padding: 5px 8px; flex-wrap: wrap; gap: 4px; }
+}
