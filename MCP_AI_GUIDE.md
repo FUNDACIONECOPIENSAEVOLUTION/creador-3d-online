@@ -162,3 +162,7 @@ El proyecto incluye `LICENSE` MIT para permitir reutilización del código; mant
 **Estado real:** infraestructura de mallas y objetos geométricos editables; **NO** recreación hiperrealista exacta de cualquier foto, ni una IA multimodal incluida en GitHub Pages. El usuario requiere conectar una IA con visión autorizada para analizar imagen y redactar el plano. La conexión desde este chat a localhost no es automática. Faltan construcción orgánica avanzada (curvas/mallas esculpidas), rigging de piel, mejores assets, retopología, fototexturizado, guardado e integración remota segura. Mantener la aprobación y pruebas antes de fusionar.
 
 **Registro:** toda IA deberá distinguir `implementado`, `probado` y `pendiente`. Nunca anunciar una capacidad automática de imagen a 3D cuando el código solo genera un borrador por partes.
+
+### Complemento humano opcional del motor universal
+
+Se implementó `src/character-appearance.js` para aplicar ojos, cabello sencillo, piel, altura y complexión a figuras humanoides generadas por EcoBlend. Se expusieron tres herramientas MCP `mcp_human_describe`, `mcp_human_create` y `mcp_human_update` y se agregaron pruebas de rasgos. El módulo no instala MPFB2, no reemplaza el sistema de construcción universal ni pretende hiperrealismo automático.
