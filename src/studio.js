@@ -592,7 +592,7 @@ import * as THREE from 'three';
       getSceneGraphData() {
         const objects = [];
         this.objects.forEach(root => root.traverse(o => {
-          if (objects.length >= 1500 || o.isBone) return;
+          if (objects.length >= 1500) return;
           const material = Array.isArray(o.material) ? o.material[0] : o.material;
           objects.push({
             uuid: o.uuid, parentUuid: o.parent?.uuid || null,
