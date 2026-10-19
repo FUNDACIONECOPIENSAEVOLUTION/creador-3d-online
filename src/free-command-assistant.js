@@ -1,3 +1,4 @@
+import { matchPreset, makePresetBlueprint } from './asset-presets.js';
 /**
  * Accessible free starter interpreter: deterministic commands, no paid AI, no eval.
  * This is NOT a language model. Unknown language is explicitly refused.
@@ -10,6 +11,9 @@ export function planFreeCommand(raw) {
   if (/\b(hiperrealista|fotorrealista|fotografico|a partir de (mi |una |la )?(foto|imagen)|transforma (mi |la )?foto)\b/.test(input))
     throw new Error('La creación fotorrealista desde una imagen aún no está soportada. Puedes crear un maniquí articulado gratuito y mejorar sus materiales y anatomía.');
   const commands = [];
+  const preset = matchPreset(raw);
+  if (preset && /\b(crea|crear|genera|generar|haz|hacer|quiero|necesito)\b/.test(input))
+    commands.push({ type: 'asset', preset });
   if (/\b(angel|guardian alado|guardian con alas)\b/.test(input) &&
       /\b(crea|crear|genera|generar|haz|hacer|quiero|necesito)\b/.test(input))
     commands.push({ type: 'create', figure: 'angel' });
@@ -47,6 +51,14 @@ export function runFreeCommand(studio, prompt) {
   const result = [];
   for (const command of commands) {
     switch (command.type) {
+      case 'asset': {
+        const made = studio.buildUniversalAsset(
+          makePresetBlueprint(command.preset)
+        );
+        if (made?.error) throw new Error(made.error);
+        result.push('Modelo EcoBlend creado: ' + made.name);
+        break;
+      }
       case 'create': {
         const created = studio.createWebCharacter(command.figure);
         if (created?.error) throw new Error(created.error);
