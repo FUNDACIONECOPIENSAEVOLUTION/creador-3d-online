@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EcoBlend | Studio PBR & MCP AI Vision</title>
-  <link rel="stylesheet" href="./styles/studio.css?v=1.6.0" />
+  <link rel="stylesheet" href="./styles/studio.css?v=1.7.0" />
 
   <script type="importmap">
     {
@@ -22,7 +22,7 @@
       <div class="brand-dot"></div>
       <span>EcoBlend</span>
       <a class="repo-badge" href="https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online" target="_blank">GitHub Repo</a>
-      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP EcoBlend v1.6</span>
+      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP EcoBlend v1.7</span>
     </div>
 
     <div class="toolbar">
@@ -72,6 +72,11 @@
         <button class="mcp-btn" type="button" onclick="app.copyRemoteRoom()" aria-label="Copiar identificador de sala">Copiar ID</button>
       </div>
       <button class="mcp-btn remote-chatgpt-copy" type="button" onclick="app.copyRemoteChatGPTPrompt()">Copiar petición para ChatGPT</button>
+      <label class="mcp-read-consent" for="remote-approve-scene">
+        <input id="remote-approve-scene" type="checkbox" />
+        Autorizar consultas de escena durante esta sala (solo lectura; no imágenes ni ediciones).
+      </label>
+      <span id="remote-approval-activity" role="status" aria-live="polite">Sin solicitudes pendientes.</span>
       <p style="font-size:10px;line-height:1.45;margin:4px 0;color:var(--text-muted);">Comparte la sala solamente con la IA que estás probando. EcoBlend solicitará tu autorización antes de revelar datos o aplicar cada modificación. No cierres esta pestaña durante el trabajo.</p>
     </div>
     <div class="mcp-container">
@@ -317,11 +322,34 @@
     </div>
   </aside>
 
+  <!-- Permisos MCP: controles propios visibles, no window.confirm (Chrome descarta diálogos en background). -->
+  <section id="mcp-approval-panel" class="mcp-approval-panel" role="alertdialog"
+    aria-labelledby="mcp-approval-title" aria-describedby="mcp-approval-detail"
+    aria-modal="true" hidden>
+    <div class="mcp-approval-card">
+      <div class="mcp-approval-heading">
+        <span class="mcp-approval-led" aria-hidden="true"></span>
+        <strong id="mcp-approval-title">EcoBlend: autorización pendiente</strong>
+      </div>
+      <p id="mcp-approval-detail">ChatGPT solicita una operación en tu escena 3D.</p>
+      <p id="mcp-approval-tool" class="mcp-approval-tool"></p>
+      <p id="mcp-approval-timer" class="mcp-approval-timer" aria-live="polite"></p>
+      <div class="mcp-approval-actions">
+        <button id="mcp-approval-deny" type="button" onclick="app.answerRemotePermission(false)">
+          Rechazar
+        </button>
+        <button id="mcp-approval-allow" type="button" class="mcp-btn"
+          onclick="app.answerRemotePermission(true)">Permitir esta operación</button>
+      </div>
+      <p class="mcp-approval-hint">No se autorizará nada por estar ausente. Las operaciones que no apruebes caducarán sin ejecutarse.</p>
+    </div>
+  </section>
+
   <footer>
     <span id="status-bar">Listo. Repositorio: FUNDACIONECOPIENSAEVOLUTION/creador-3d-online</span>
     <span>Three.js r160 | Physical PBR | MCP Multi-Agent Ready</span>
   </footer>
 
-  <script type="module" src="./src/studio.js?v=1.6.0"></script>
+  <script type="module" src="./src/studio.js?v=1.7.0"></script>
 </body>
 </html>

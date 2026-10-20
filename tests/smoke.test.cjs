@@ -50,3 +50,21 @@ test('El panel MCP nube permite desplazarse y copiar el mensaje con ID temporal'
   assert.match(studio, /this\.remoteRoomId/);
   assert.doesNotMatch(studio, /navigator\.clipboard\.writeText\(key\)/);
 });
+
+test('EcoBlend muestra permisos MCP dentro del editor, sin ventanas confirm en segundo plano',()=>{
+  const html=read('index.html');
+  const css=read('styles/studio.css');
+  const studio=read('src/studio.js');
+  assert.match(html,/id="mcp-approval-panel"/);
+  assert.match(html,/onclick="app\.answerRemotePermission\(true\)"/);
+  assert.match(html,/onclick="app\.answerRemotePermission\(false\)"/);
+  assert.match(html,/id="remote-approve-scene"/);
+  assert.match(studio,/queueRemotePermission\(packet,socket\)/);
+  assert.match(studio,/answerRemotePermission\(approved\)/);
+  assert.match(studio,/clearRemotePermissionQueue/);
+  assert.match(studio,/La solicitud caducó sin respuesta/);
+  assert.doesNotMatch(studio,/window\.confirm\(/);
+  assert.match(css,/mcp-approval-panel\[hidden\]/);
+  assert.match(css,/\.mcp-approval-panel\s*\{/);
+  assert.match(studio,/document\.getElementById\('remote-approve-scene'\)\.checked=false/);
+});
