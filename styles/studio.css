@@ -407,3 +407,14 @@
   color: #fbbf24;
   line-height: 1.4;
 }
+
+/* EcoBlend 1.8 – permisos granulares por sesión, correcciones de usuario y seguimiento visual. */
+.mcp-agent-collab { display:flex; flex-direction:column; gap:8px; padding:8px 3px; border-top:1px solid var(--border); }
+.mcp-agent-controls { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:5px; }
+.mcp-agent-controls button { white-space:normal; min-height:34px; font-size:10px; }
+.mcp-agent-controls #mcp-collab-stop { grid-column:1/-1; background:#4c1d1d; color:#fecaca; }
+.mcp-agent-controls button:disabled { opacity:.45; cursor:not-allowed; }
+#mcp-feedback-input { width:100%; box-sizing:border-box; min-height:70px; resize:vertical; background:#111827; color:#f9fafb; border:1px solid var(--border); border-radius:5px; padding:7px; font:11px/1.4 sans-serif; user-select:text; }
+#mcp-collab-status { color:#6ee7b7; line-height:1.4; }
+#mcp-feedback-count { color:#a7f3d0; }
+#mcp-progress-preview { max-width:100%; max-height:160px; object-fit:contain; border:1px solid var(--border); border-radius:5px; }

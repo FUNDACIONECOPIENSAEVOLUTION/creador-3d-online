@@ -14,6 +14,7 @@ import * as THREE from 'three';
     import { makePresetBlueprint, matchPreset } from './asset-presets.js';
     import { normalizeCharacterSpec, interpretCharacterDescription } from './character-spec.js';
     import { applyCharacterAppearance } from './character-appearance.js';
+    import { CollaborationSession } from './mcp-collaboration.js';
 
     class Creador3DOnlineStudio {
       constructor() {
@@ -22,6 +23,7 @@ import * as THREE from 'three';
         this.selectedObject = null;
         this.ws = null;
         this.aiActionHistory = [];
+        this.collaboration = new CollaborationSession(this);
         this.characterWorkflow = new CharacterWorkflow(this);
         this.animationEditor = new AnimationEditor(this);
         this.qualityProfile = 'low'; // Iniciar siempre en modo económico; el usuario puede aumentar la calidad.
@@ -579,6 +581,30 @@ import * as THREE from 'three';
           return {error: error.message};
         }
       }
+      createGuardianPawn() {
+        try {
+          const plan = makePresetBlueprint('guardian-pawn');
+          const result = this.buildUniversalAsset(plan);
+          if (result?.error) throw Error(result.error);
+          const selected = this.selectedObject;
+          if (selected) {
+            const bounds = new THREE.Box3().setFromObject(selected);
+            const center = bounds.getCenter(new THREE.Vector3());
+            const size = bounds.getSize(new THREE.Vector3());
+            const d = Math.max(5.8,Math.max(size.x,size.y,size.z)*2.05);
+            this.orbit.target.copy(center);
+            this.camera.position.set(center.x+d*.55,center.y+d*.31,center.z+d*.86);
+            this.orbit.update();
+          }
+          this.collaboration.recordFrame('Peón guardián creado');
+          this.setStatus('♟ Peón guardián 3D creado: '+result.parts+' partes editables. Exporta GLB para probar.');
+          return result;
+        } catch(error) {
+          this.setStatus('Error al crear el peón 3D: '+error.message);
+          return {error:error.message};
+        }
+      }
+
       createAssetPreset() {
         try { return this.buildUniversalAsset(makePresetBlueprint(document.getElementById('asset-preset').value)); }
         catch (error) {this.setStatus('Plantilla: '+error.message);return {error:error.message};}
@@ -760,7 +786,9 @@ import * as THREE from 'three';
         return {
           timestamp: new Date().toISOString(),
           camera: { position: this.camera.position.toArray(), target: this.orbit.target.toArray() },
-          objects
+          objects,
+          pendingCorrections: this.collaboration.pendingCount(),
+          tip: 'Si pendingCorrections es mayor que cero, consulta ecoblend_feedback para escuchar al usuario.'
         };
       }
 
@@ -794,6 +822,8 @@ import * as THREE from 'three';
               { name: 'mcp_capture_quad_view', description: 'Captura 4 ángulos simultáneos (Perspectiva, Frontal, Superior, Lateral) en un solo collage PNG Base64 para análisis espacial 3D de la IA.' },
               { name: 'mcp_spawn_pbr_mesh', description: 'Crea una nueva malla 3D con shader físico MeshPhysicalMaterial.' },
               { name: 'mcp_modify_object', description: 'Modifica posición, escala o material de un objeto existente.' },
+              { name: 'mcp_get_feedback', description: 'Leer correcciones del usuario.' },
+              { name: 'mcp_capture_progress', description: 'Mosaico de avances del modelo, no video continuo.' },
               { name: 'mcp_get_creation_brief', description: 'Lee el encargo de creación de personaje y los requisitos.' },
               { name: 'mcp_get_reference_image', description: 'Obtiene la imagen de referencia en JPEG para análisis visual.' },
               { name: 'mcp_animation_inspect', description: 'Inspecciona huesos, articulaciones, clips y fotogramas del modelo.' },
@@ -892,6 +922,10 @@ import * as THREE from 'three';
             };
             if (params.position !== undefined) target.position.fromArray(vector(params.position, 'position', 10000));
             if (params.scale !== undefined) target.scale.fromArray(vector(params.scale, 'scale', 1000));
+            if (params.rotationDeg !== undefined) {
+              const angles = vector(params.rotationDeg, 'rotationDeg', 3600);
+              target.rotation.set(...angles.map(THREE.MathUtils.degToRad));
+            }
             const material = Array.isArray(target.material) ? target.material[0] : target.material;
             if (params.color !== undefined || params.metalness !== undefined ||
                 params.roughness !== undefined || params.transmission !== undefined) {
@@ -920,6 +954,8 @@ import * as THREE from 'three';
               else if (method === 'mcp_get_scene_graph') result = this.getSceneGraph();
               else if (method === 'mcp_capture_viewport') result = this.captureViewport();
               else if (method === 'mcp_capture_quad_view') result = this.captureQuadView();
+              else if (method === 'mcp_get_feedback') result = self.collaboration.getFeedback();
+              else if (method === 'mcp_capture_progress') result = self.collaboration.getProgress();
               else if (method === 'mcp_get_creation_brief') result = self.characterWorkflow.getBrief();
               else if (method === 'mcp_get_reference_image') result = self.characterWorkflow.getImage();
               else if (method === 'mcp_character_create') {
@@ -1047,7 +1083,7 @@ import * as THREE from 'three';
           return this.setStatus('Reconecta EcoBlend MCP Nube antes de copiar la petición.');
         const prompt='Usa el complemento EcoBlend MCP en la siguiente sala temporal: '+
           this.remoteRoomId+
-          '\nPrimero consulta mi escena con ecoblend_scene, solicita mi aprobación en EcoBlend y confirma los objetos detectados. Después crea en esa misma sala un peón de ajedrez guardián humanoide con armadura, casco, escudo y lanza mediante ecoblend_build_blueprint (mallas y partes articuladas). Pide aprobación en EcoBlend antes de crear y verifica la escena al terminar. No afirmes que es hiperrealista si es una base geométrica.';
+          '\nEn EcoBlend ya puedo darte permiso de edición durante esta sala sin aprobar cada paso. Consulta ecoblend_scene, crea un peón guardián humanoide con armadura, escudo y lanza mediante ecoblend_preset (id guardian-pawn) o ecoblend_build_blueprint, y confirma que hay mallas en escena. Después solicita ecoblend_quad_view y ecoblend_progress para evaluar la figura desde varios ángulos; lee ecoblend_feedback tras cada cambio y aplica mis correcciones. Respeta la caducidad del permiso; si el modelo no se creó, no lo afirmes. Las bases geométricas no equivalen a hiperrealismo automático.';
         try {
           await navigator.clipboard.writeText(prompt);
           this.setStatus('Petición de prueba con sala copiada. Pégala en ChatGPT; mantén EcoBlend abierto.');
@@ -1056,6 +1092,44 @@ import * as THREE from 'three';
         }
       }
 
+
+
+      approveRemoteSession(){
+        const pending=this.remotePermissionQueue?.[0];
+        if(pending?.packet.method==='mcp_get_reference_image'){
+          this.setStatus('La imagen privada requiere autorización individual. Usa Permitir solo esta operación.');
+          return;
+        }
+        try{
+          this.collaboration.grant('edit');
+          this.setStatus('IA autorizada para crear, revisar y animar durante esta sala (máx. 20 min).');
+          if(pending)this.answerRemotePermission(true);
+        }catch(error){this.setStatus('No se pudo autorizar la sesión: '+error.message);}
+      }
+
+      grantRemoteAI(scope){
+        try{
+          this.collaboration.grant(scope);
+          this.setStatus('Permiso de '+(scope==='edit'?'edición':'observación')+
+            ' concedido durante la sala actual (máximo 20 minutos). Puedes detenerlo cuando quieras.');
+        }catch(error){this.setStatus('No se concedió permiso: '+error.message);}
+      }
+
+      revokeRemoteAI(){
+        this.collaboration.revoke();
+        this.setStatus('Control temporal de IA detenido. Las siguientes operaciones pedirán permiso.');
+      }
+
+      sendRemoteFeedback(){
+        try{
+          if(!this.remoteRoomId || this.remoteSocket?.readyState!==WebSocket.OPEN)
+            throw Error('Conecta primero EcoBlend MCP.');
+          const entry=document.getElementById('mcp-feedback-input');
+          this.collaboration.addFeedback(entry.value);
+          entry.value='';
+          this.setStatus('Corrección registrada para la IA. Debe leer los comentarios pendientes.');
+        }catch(error){this.setStatus('No se registró la corrección: '+error.message);}
+      }
 
       // Permisos de sesión EcoBlend. No usa la confirmación nativa bloqueable: Chrome puede descartarla
       // cuando ChatGPT y EcoBlend están abiertos en pestañas diferentes.
@@ -1114,12 +1188,19 @@ import * as THREE from 'three';
         const allowed=new Set([
           'mcp_get_scene_graph','mcp_capture_quad_view','mcp_get_creation_brief',
           'mcp_get_reference_image','mcp_asset_preset','mcp_asset_validate',
-          'mcp_asset_build','mcp_animation_inspect','mcp_animation_preset'
+          'mcp_asset_build','mcp_animation_inspect','mcp_animation_preset',
+          'mcp_get_feedback','mcp_capture_progress','mcp_modify_object'
         ]);
         if(!allowed.has(packet.method)){
           socket.send(JSON.stringify({
             type:'response',requestId:packet.requestId,error:'Método remoto no permitido.'
           }));
+          return;
+        }
+        if(this.collaboration.allows(packet.method)){
+          this.runRemotePermission(packet,socket);
+          document.getElementById('remote-approval-activity').textContent=
+            'Sesión de trabajo activa: operación autorizada.';
           return;
         }
         // Es una autorización expresa y temporal, únicamente para lectura de la escena.
@@ -1167,6 +1248,9 @@ import * as THREE from 'three';
           reply=data.error
             ? {type:'response',requestId:packet.requestId,error:data.error.message}
             : {type:'response',requestId:packet.requestId,result:data.result};
+          if(!data.error && ['mcp_asset_build','mcp_asset_preset','mcp_animation_preset','mcp_modify_object'].includes(packet.method)){
+            this.collaboration.recordFrame(packet.method);
+          }
         }catch(error){
           reply={type:'response',requestId:packet.requestId,error:String(error.message).slice(0,200)};
         }
@@ -1200,6 +1284,7 @@ import * as THREE from 'three';
         try{
           this.clearRemotePermissionQueue();
           if(this.remoteSocket)this.remoteSocket.close();
+          this.collaboration.revoke();
           this.remoteOriginalTitle=document.title.replace(/^⚠ Autoriza EcoBlend · /,'');
           const addr=new URL(document.getElementById('remote-mcp-base').value.trim());
           if(addr.protocol!=='https:'||addr.username||addr.password||addr.search||addr.hash)throw Error('Introduce una dirección base HTTPS confiable, sin parámetros.');
@@ -1228,6 +1313,7 @@ import * as THREE from 'three';
             try{packet=JSON.parse(event.data);}catch{return;}
             if(packet.type==='ready'){
               this.remoteRoomId=room;
+              this.collaboration.connected(room);
               document.getElementById('remote-room').value=room;
               document.getElementById('remote-approve-scene').checked=false;
               status.textContent='Conectado (20 minutos)';
@@ -1242,6 +1328,7 @@ import * as THREE from 'three';
           socket.onclose=()=>{
             if(this.remoteSocket!==socket)return;
             this.clearRemotePermissionQueue('Sala desconectada o caducada.');
+            this.collaboration.revoke();
             document.getElementById('remote-approve-scene').checked=false;
             this.remoteRoomId=null;
             document.getElementById('remote-room').value='—';
@@ -1252,6 +1339,7 @@ import * as THREE from 'three';
 
       disconnectRemoteMCP(){
         this.clearRemotePermissionQueue();
+        this.collaboration.revoke();
         document.getElementById('remote-approve-scene').checked=false;
         if(this.remoteSocket)this.remoteSocket.close();
         this.remoteSocket=null;this.remoteRoomId=null;
