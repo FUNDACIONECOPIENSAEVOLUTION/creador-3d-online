@@ -3,7 +3,7 @@
  * Lives in the opened browser tab; no clipboard, localStorage or cloud persistence.
  * Live video/screen sharing is NOT implemented: snapshots are made on successful edits.
  */
-export const COLLAB_TTL_MS = 10 * 60_000;
+export const COLLAB_TTL_MS = 20 * 60_000;
 const READ = new Set([
   'mcp_get_scene_graph','mcp_capture_quad_view','mcp_get_creation_brief',
   'mcp_asset_validate','mcp_animation_inspect','mcp_get_feedback','mcp_capture_progress'
@@ -35,7 +35,8 @@ export class CollaborationSession {
       throw Error('Primero conecta EcoBlend MCP Nube.');
     this.room=this.app.remoteRoomId;
     this.scope=scope;
-    this.expires=Date.now()+COLLAB_TTL_MS;
+    const roomExpiry=Number(this.room.split('.')[1]);
+    this.expires=Number.isFinite(roomExpiry) ? Math.min(Date.now()+COLLAB_TTL_MS,roomExpiry) : Date.now()+COLLAB_TTL_MS;
     this.render();
     return {scope,expires:this.expires};
   }
