@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EcoBlend | Studio PBR & MCP AI Vision</title>
-  <link rel="stylesheet" href="./styles/studio.css" />
+  <link rel="stylesheet" href="./styles/studio.css?v=1.6.0" />
 
   <script type="importmap">
     {
@@ -22,7 +22,7 @@
       <div class="brand-dot"></div>
       <span>EcoBlend</span>
       <a class="repo-badge" href="https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online" target="_blank">GitHub Repo</a>
-      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP EcoBlend v1.4</span>
+      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP EcoBlend v1.6</span>
     </div>
 
     <div class="toolbar">
@@ -66,11 +66,12 @@
         <button class="mcp-btn" onclick="app.connectRemoteMCP()">Conectar nube</button>
         <button class="mcp-btn" onclick="app.disconnectRemoteMCP()">Desconectar</button>
       </div>
-      <label style="font-size:11px;">Sala temporal (20 minutos):</label>
-      <div style="display:flex;gap:5px;align-items:center;">
-        <code id="remote-room" style="font-size:10px;overflow-wrap:anywhere;flex:1;">—</code>
-        <button class="mcp-btn" onclick="app.copyRemoteRoom()" aria-label="Copiar identificador de sala">Copiar</button>
+      <label for="remote-room">Sala temporal (20 minutos)</label>
+      <div class="remote-room-control">
+        <input id="remote-room" type="text" readonly value="" placeholder="Conecta la nube para generar una sala" aria-label="Identificador de sala MCP temporal" />
+        <button class="mcp-btn" type="button" onclick="app.copyRemoteRoom()" aria-label="Copiar identificador de sala">Copiar ID</button>
       </div>
+      <button class="mcp-btn remote-chatgpt-copy" type="button" onclick="app.copyRemoteChatGPTPrompt()">Copiar petición para ChatGPT</button>
       <p style="font-size:10px;line-height:1.45;margin:4px 0;color:var(--text-muted);">Comparte la sala solamente con la IA que estás probando. EcoBlend solicitará tu autorización antes de revelar datos o aplicar cada modificación. No cierres esta pestaña durante el trabajo.</p>
     </div>
     <div class="mcp-container">
@@ -321,6 +322,6 @@
     <span>Three.js r160 | Physical PBR | MCP Multi-Agent Ready</span>
   </footer>
 
-  <script type="module" src="./src/studio.js"></script>
+  <script type="module" src="./src/studio.js?v=1.6.0"></script>
 </body>
 </html>

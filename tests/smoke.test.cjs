@@ -7,8 +7,8 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('La página carga assets modulares', () => {
   const html = read('index.html');
-  assert.match(html, /src="\.\/src\/studio\.js"/);
-  assert.match(html, /href="\.\/styles\/studio\.css"/);
+  assert.match(html, /src="\.\/src\/studio\.js(?:\?v=[\w.-]+)?"/);
+  assert.match(html, /href="\.\/styles\/studio\.css(?:\?v=[\w.-]+)?"/);
   assert.doesNotMatch(html, /<script type="module">[\s\S]+<\/script>/);
 });
 test('Módulo de personajes integra referencia, rig y animación', () => {
@@ -36,4 +36,17 @@ test('Los nombres del Outliner usan texto seguro', () => {
   const studio = read('src/studio.js');
   assert.match(studio, /label\.textContent/);
   assert.doesNotMatch(studio, /item\.innerHTML/);
+});
+
+test('El panel MCP nube permite desplazarse y copiar el mensaje con ID temporal', () => {
+  const html = read('index.html');
+  const css = read('styles/studio.css');
+  const studio = read('src/studio.js');
+  assert.match(html, /id="remote-room"[^>]+readonly/);
+  assert.match(html, /copyRemoteChatGPTPrompt\(\)/);
+  assert.match(css, /\.panel-left\s*\{[^}]*overflow-y:\s*auto/);
+  assert.match(css, /\.panel-left\s*>\s*\.mcp-container\s*\{[^}]*overflow:\s*visible/);
+  assert.match(studio, /copyRemoteChatGPTPrompt\(\)/);
+  assert.match(studio, /this\.remoteRoomId/);
+  assert.doesNotMatch(studio, /navigator\.clipboard\.writeText\(key\)/);
 });
