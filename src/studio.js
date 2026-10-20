@@ -1145,12 +1145,19 @@ import * as THREE from 'three';
         const allowed=new Set([
           'mcp_get_scene_graph','mcp_capture_quad_view','mcp_get_creation_brief',
           'mcp_get_reference_image','mcp_asset_preset','mcp_asset_validate',
-          'mcp_asset_build','mcp_animation_inspect','mcp_animation_preset'
+          'mcp_asset_build','mcp_animation_inspect','mcp_animation_preset',
+          'mcp_get_feedback','mcp_capture_progress'
         ]);
         if(!allowed.has(packet.method)){
           socket.send(JSON.stringify({
             type:'response',requestId:packet.requestId,error:'Método remoto no permitido.'
           }));
+          return;
+        }
+        if(this.collaboration.allows(packet.method)){
+          this.runRemotePermission(packet,socket);
+          document.getElementById('remote-approval-activity').textContent=
+            'Sesión de trabajo activa: operación autorizada.';
           return;
         }
         // Es una autorización expresa y temporal, únicamente para lectura de la escena.
