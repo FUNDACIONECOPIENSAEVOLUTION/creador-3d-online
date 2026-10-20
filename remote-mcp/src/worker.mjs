@@ -16,6 +16,22 @@ export const SUPPORTED_ORIGINS = new Set([
 ]);
 const ROOM_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.(\d{13})\.([a-zA-Z0-9_-]{43})$/i;
 const MAX_JSON = 135 * 1024;
+const BLUEPRINT_FORMAT = {
+  version:"ecoblend.asset.v1",
+  categories:["human","anthropomorphic","animal","creature","robot","vehicle","building","prop","abstract","other"],
+  shapes:["box","sphere","cylinder","cone","capsule","torus","mesh"],
+  limits:{partsMax:120,customVerticesPerPart:3000,customTrianglesPerPart:6000},
+  required:["version","name","category","parts"],
+  partFields:["id","parent","kind","shape","name","position","rotationDeg","scale","color","metalness","roughness","vertices","faces"],
+  conventions:"parts es una lista ordenada; los padres deben declararse antes que sus hijos. kind=mesh o joint; los materiales usan colores hexadecimales #RRGGBB. Coordenadas XYZ y rotaciones en grados.",
+  minimalExample:{
+    version:"ecoblend.asset.v1",name:"FiguraDePrueba",category:"prop",
+    parts:[{id:"cuerpo",kind:"mesh",shape:"sphere",position:[0,1,0],scale:[1,2,1],color:"#a6bed0"}]
+  },
+  shortcut:"Para obtener inmediatamente una figura 3D, usa ecoblend_preset con id guardian-pawn, sin redactar blueprint.",
+  validationSteps:"Llama a ecoblend_blueprint_format para conocer el formato; ecoblend_validate_blueprint para validar; después ecoblend_build_blueprint para crear; confirma con ecoblend_scene y ecoblend_quad_view."
+};
+
 
 const encoder=new TextEncoder();
 function base64url(array){
@@ -51,6 +67,7 @@ function cors(request){const origin=request.headers.get('Origin');return allowed
 
 
 const tools = [
+  { name:"ecoblend_blueprint_format", description:"Mostrar la versión y un ejemplo exacto de blueprint JSON admitido: version ecoblend.asset.v1, name, category, parts. No modifica escena. Para el primer peón usa ecoblend_preset id guardian-pawn.", inputSchema:{type:"object",required:["room"],properties:{room:{type:"string"}}},annotations:{readOnlyHint:true}},
   { name:"ecoblend_scene", description:"Consultar grafo y geometría de la escena EcoBlend, previa aprobación en el navegador.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_progress", description:"Ver un mosaico de los últimos avances renderizados después de crear o modificar el modelo (no es vídeo en vivo).", inputSchema:{type:"object",required:["room"],properties:{room:{type:"string"}}},annotations:{readOnlyHint:true}},
   { name:"ecoblend_feedback", description:"Leer correcciones escritas en EcoBlend por el usuario mientras la IA trabaja.",inputSchema:{type:"object",required:["room"],properties:{room:{type:"string"}}},annotations:{readOnlyHint:true}},
@@ -68,12 +85,13 @@ const tools = [
     transmission:{type:"number",minimum:0,maximum:1}
   }}, annotations:{destructiveHint:false,readOnlyHint:false}},
   { name:"ecoblend_preset", description:"Crear una figura de catálogo mediante un comando tipado que el usuario aprobará.", inputSchema: {type:"object",required:["room","id"],properties:{room:{type:"string"},id:{type:"string",enum:["anthro-cat","dragon","robot","tree","chair","vehicle","castle","guardian-pawn"]}}}, annotations:{destructiveHint:false,readOnlyHint:false}},
-  { name:"ecoblend_validate_blueprint", description:"Validar la definición de modelo 3D sin modificar la escena.", inputSchema: {type:"object",required:["room","blueprint"],properties:{room:{type:"string"},blueprint:{type:"object"}}}, annotations:{readOnlyHint:true}},
-  { name:"ecoblend_build_blueprint", description:"Construir modelo 3D a partir de un blueprint validado; la ventana EcoBlend debe aprobarlo.", inputSchema: {type:"object",required:["room","blueprint"],properties:{room:{type:"string"},blueprint:{type:"object"}}}, annotations:{destructiveHint:false,readOnlyHint:false}},
+  { name:"ecoblend_validate_blueprint", description:"Validar blueprint EXACTO ecoblend.asset.v1 con name, category y parts. Si no conoces el formato llama antes a ecoblend_blueprint_format. No modifica escena.", inputSchema: {type:"object",required:["room","blueprint"],properties:{room:{type:"string"},blueprint:{type:"object"}}}, annotations:{readOnlyHint:true}},
+  { name:"ecoblend_build_blueprint", description:"Construir geometría desde blueprint version ecoblend.asset.v1, name, category, parts. Validar antes con ecoblend_validate_blueprint. Para figura inmediata usa ecoblend_preset guardian-pawn.", inputSchema: {type:"object",required:["room","blueprint"],properties:{room:{type:"string"},blueprint:{type:"object"}}}, annotations:{destructiveHint:false,readOnlyHint:false}},
   { name:"ecoblend_animation_inspect", description:"Inspeccionar articulaciones y animaciones, previa aprobación.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_animation_preset", description:"Aplicar animación básica al modelo seleccionado previa confirmación.", inputSchema: {type:"object",required:["room","kind"],properties:{room:{type:"string"},kind:{type:"string",enum:["idle","attack","defend","hit","defeat"]}}}, annotations:{destructiveHint:false,readOnlyHint:false}}
 ];
 const TOOL_MAP = {
+  ecoblend_blueprint_format:"mcp_asset_blueprint_format",
   ecoblend_scene:"mcp_get_scene_graph",
   ecoblend_progress:"mcp_capture_progress",
   ecoblend_feedback:"mcp_get_feedback",
@@ -107,8 +125,16 @@ function validArgs(name,args) {
   }
   if(name==="ecoblend_preset" && !["anthro-cat","dragon","robot","tree","chair","vehicle","castle","guardian-pawn"].includes(args.id))throw new Error("Plantilla desconocida.");
   if(name==="ecoblend_animation_preset" && !["idle","attack","defend","hit","defeat"].includes(args.kind))throw new Error("Movimiento no permitido.");
-  if(name.includes("blueprint") && (!args.blueprint||typeof args.blueprint!=="object"||Array.isArray(args.blueprint)
-      ||!Array.isArray(args.blueprint.parts)||args.blueprint.parts.length>120))throw new Error("Plano 3D inválido.");
+  if(["ecoblend_validate_blueprint","ecoblend_build_blueprint"].includes(name)){
+    const blueprint=args.blueprint;
+    if(!blueprint||typeof blueprint!=="object"||Array.isArray(blueprint))
+      throw new Error("El plano 3D debe ser un objeto JSON. Consulta ecoblend_blueprint_format.");
+    if(blueprint.version!==BLUEPRINT_FORMAT.version)
+      throw new Error("Versión de plano incompatible. Se requiere version: ecoblend.asset.v1. Consulta ecoblend_blueprint_format.");
+    if(typeof blueprint.name!=="string"||!BLUEPRINT_FORMAT.categories.includes(blueprint.category)
+      ||!Array.isArray(blueprint.parts)||!blueprint.parts.length||blueprint.parts.length>120)
+      throw new Error("Plano inválido: necesitas name, category reconocida y parts de 1 a 120 componentes. Consulta ecoblend_blueprint_format.");
+  }
 }
 function simplifyArgs(name,args){
   const clean={...args};
@@ -129,7 +155,7 @@ export default {
   async fetch(request,env) {
     const url=new URL(request.url);
     if(url.pathname==="/health" && request.method==="GET")
-      return json({service:"ecoblend-remote-mcp",version:"0.1.0",mode:"temporary-room",mcp:"/mcp"});
+      return json({service:"ecoblend-remote-mcp",version:"0.2.0",mode:"temporary-room",mcp:"/mcp",features:["ecoblend_blueprint_format","guardian-pawn","ecoblend_progress","ecoblend_modify_part"]});
 
     // Creating a session requires a server-side secret known only to the owner.
     // This credential is never stored in GitHub or sent to ChatGPT.
@@ -186,7 +212,7 @@ export default {
     if(packet.id===undefined)return new Response(null,{status:202});
     if(packet.method==="initialize")
       return json(ok(packet.id,{protocolVersion:PROTOCOL,capabilities:{tools:{listChanged:false}},
-        serverInfo:{name:"ecoblend-remote-mcp",version:"0.1.0"},instructions:"Conecta primero la pestaña EcoBlend a MCP nube; proporciona el ID de sala al agente. Durante una sesión EcoBlend el usuario puede conceder un permiso temporal de observación o edición y detenerlo cuando quiera; la lectura de imágenes privadas sigue requiriendo consentimiento individual."}));
+        serverInfo:{name:"ecoblend-remote-mcp",version:"0.2.0"},instructions:"Conecta primero la pestaña EcoBlend a MCP nube; proporciona el ID de sala al agente. Durante una sesión EcoBlend el usuario puede conceder un permiso temporal de observación o edición y detenerlo cuando quiera; la lectura de imágenes privadas sigue requiriendo consentimiento individual."}));
     if(packet.method==="ping")return json(ok(packet.id,{}));
     if(packet.method==="tools/list")return json(ok(packet.id,{tools}));
     if(packet.method!=="tools/call")return json(fault(packet.id,-32601,"Método desconocido."),404);
@@ -198,6 +224,8 @@ export default {
       validArgs(name,args);
       if(!await verifiedRoom(env.ECOBLEND_PILOT_KEY,args.room))
         throw new Error('Sala caducada o firma inválida. Reconecta desde EcoBlend.');
+      if(name==="ecoblend_blueprint_format")
+        return json(ok(packet.id,{content:[{type:"text",text:JSON.stringify(BLUEPRINT_FORMAT)}]}));
       const stub=env.ECOBLEND_ROOMS.get(env.ECOBLEND_ROOMS.idFromName(args.room));
       const task=await stub.fetch("https://internal.ecoblend/rpc",{
         method:"POST",headers:{"Content-Type":"application/json"},
@@ -247,7 +275,7 @@ export class EcoBlendRoom {
     if(this.pending.size>=3)return json({error:"Hay demasiadas solicitudes pendientes."},429);
     const requestId=crypto.randomUUID();
     const output=new Promise(resolve=>{
-      const timer=setTimeout(()=>{this.pending.delete(requestId);resolve(json({error:"Sin respuesta o sin aprobación en EcoBlend."},504))},35000);
+      const timer=setTimeout(()=>{this.pending.delete(requestId);resolve(json({error:"EcoBlend no respondió dentro del tiempo de espera. Mantén abierta la pestaña y concede un permiso temporal de trabajo para evitar aprobaciones repetidas."},504))},25000);
       this.pending.set(requestId,{resolve,timer});
     });
     try {

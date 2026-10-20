@@ -76,3 +76,49 @@ test('Solo el propietario con clave larga puede crear una sala temporal',async()
  }),authorized);
  assert.equal(invalidTicket.status,403);
 });
+
+
+test('el MCP descubre el formato real de blueprint sin tocar el navegador',async()=>{
+ const secret='mcp-test-secret-for-ecoblend-123456789';
+ const authorized={...env,ECOBLEND_PILOT_KEY:secret};
+ const pair=await worker.fetch(new Request('https://ecoblend.example/pair',{
+   method:'POST',headers:{Origin:'https://fundacionecopiensaevolution.github.io',
+     Authorization:'Bearer '+secret}
+ }),authorized);
+ assert.equal(pair.status,200);
+ const {room}=await pair.json();
+ const request=async(name,args)=>{
+   const response=await worker.fetch(new Request('https://ecoblend.example/mcp',{
+     method:'POST',headers:{'content-type':'application/json'},
+     body:JSON.stringify({jsonrpc:'2.0',id:9,method:'tools/call',
+       params:{name,arguments:{room,...args}}})
+   }),authorized);
+   assert.equal(response.status,200);
+   return (await response.json()).result;
+ };
+ const schema=await request('ecoblend_blueprint_format',{});
+ assert.equal(schema.isError,undefined);
+ const fmt=JSON.parse(schema.content[0].text);
+ assert.equal(fmt.version,'ecoblend.asset.v1');
+ assert.equal(fmt.minimalExample.version,'ecoblend.asset.v1');
+ assert.equal(fmt.minimalExample.parts[0].shape,'sphere');
+ assert.match(fmt.shortcut,/guardian-pawn/);
+ const wrong=await request('ecoblend_validate_blueprint',{
+   blueprint:{version:'legacy-v2',name:'Error',category:'human',parts:[{id:'cuerpo'}]}
+ });
+ assert.equal(wrong.isError,true);
+ assert.match(wrong.content[0].text,/ecoblend\.asset\.v1/);
+ const invalid=await request('ecoblend_build_blueprint',{blueprint:{version:'ecoblend.asset.v1',name:'x'}});
+ assert.equal(invalid.isError,true);
+ assert.match(invalid.content[0].text,/name, category/i);
+});
+
+test('health identifica el despliegue actualizado y sus nuevas herramientas',async()=>{
+ const response=await worker.fetch(new Request('https://ecoblend.example/health'),env);
+ const health=await response.json();
+ assert.equal(health.version,'0.2.0');
+ assert.ok(health.features.includes('ecoblend_blueprint_format'));
+ const toolList=await post('tools/list');
+ assert.ok(toolList.data.result.tools.some(x=>x.name==='ecoblend_blueprint_format'));
+ assert.ok(toolList.data.result.tools.some(x=>x.name==='ecoblend_preset'));
+});

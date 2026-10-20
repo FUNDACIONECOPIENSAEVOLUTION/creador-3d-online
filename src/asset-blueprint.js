@@ -18,7 +18,7 @@ function label(s, name, max = 80) {
 }
 export function validateAssetBlueprint(blueprint) {
   if (!blueprint || typeof blueprint !== 'object' || Array.isArray(blueprint)) throw new Error('El plano 3D debe ser JSON de tipo objeto.');
-  if (blueprint.version !== ASSET_VERSION) throw new Error('Versión de plano 3D no soportada.');
+  if (blueprint.version !== ASSET_VERSION) throw new Error('Formato incompatible: version debe ser ecoblend.asset.v1. Usa el ejemplo de ecoblend_blueprint_format, o la plantilla guardian-pawn.');
   const name = label(blueprint.name, 'name');
   if (!ASSET_CATEGORIES.includes(blueprint.category)) throw new Error('Categoría 3D no reconocida.');
   if (!Array.isArray(blueprint.parts) || !blueprint.parts.length || blueprint.parts.length > 120)
