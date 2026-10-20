@@ -1220,7 +1220,7 @@ import * as THREE from 'three';
           return;
         }
         if(this.remotePermissionQueue.some(p=>p.packet.requestId===packet.requestId))return;
-        const pending={packet,socket,deadline:Date.now()+31000};
+        const pending={packet,socket,deadline:Date.now()+21000};
         pending.timeoutId=setTimeout(()=>{
           const queue=this.remotePermissionQueue||[];
           const i=queue.indexOf(pending);
@@ -1233,7 +1233,7 @@ import * as THREE from 'three';
             }));
           }
           this.renderRemotePermission();
-        },31000);
+        },21000);
         this.remotePermissionQueue.push(pending);
         this.renderRemotePermission();
       }
