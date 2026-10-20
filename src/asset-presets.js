@@ -65,7 +65,7 @@ export function makePresetBlueprint(id){
       add('Guarda_Casco_'+label,'box',[side*.62,.35,-.12],[.20,.60,.34],steel,'Cuello_Pivote');
       joint('Hombro_'+label,[side*.68,1.02,0],'Torso_Pivote');
       add('Hombrera_'+label,'sphere',[side*.09,-.04,0],[.62,.48,.63],steel,'Hombro_'+label);
-      add('Brazalete_'+label,'torus',[side*.11,-.23,0],[.36,.16,.30],gold,'Hombro_'+label',[90,0,0]);
+      add('Brazalete_'+label,'torus',[side*.11,-.23,0],[.36,.16,.30],gold,'Hombro_'+label,[90,0,0]);
       add('Brazo_'+label,'capsule',[side*.08,-.42,0],[.38,.53,.39],silver,'Hombro_'+label);
       joint('Codo_'+label,[side*.13,-.75,0],'Hombro_'+label);
       add('Antebrazo_'+label,'capsule',[0,-.31,0],[.34,.48,.32],steel,'Codo_'+label);
