@@ -1025,9 +1025,31 @@ import * as THREE from 'three';
 
 
       async copyRemoteRoom(){
-        if(!this.remoteRoomId)return this.setStatus('Conecta primero EcoBlend MCP Nube.');
-        try {await navigator.clipboard.writeText(this.remoteRoomId);this.setStatus('Sala copiada. Compártela solo con tu IA.');}
-        catch {this.setStatus('Copia manualmente el ID de sala.');}
+        if(!this.remoteRoomId || this.remoteSocket?.readyState !== WebSocket.OPEN)
+          return this.setStatus('Reconecta EcoBlend MCP Nube: no hay sala activa.');
+        try {
+          await navigator.clipboard.writeText(this.remoteRoomId);
+          this.setStatus('ID temporal copiado. Pégalo en tu chat de EcoBlend MCP.');
+        } catch {
+          const field=document.getElementById('remote-room');
+          field.focus();
+          field.select();
+          this.setStatus('No se pudo copiar automáticamente: selecciona y copia el ID de sala.');
+        }
+      }
+
+      async copyRemoteChatGPTPrompt(){
+        if(!this.remoteRoomId || this.remoteSocket?.readyState !== WebSocket.OPEN)
+          return this.setStatus('Reconecta EcoBlend MCP Nube antes de copiar la petición.');
+        const prompt='Usa el complemento EcoBlend MCP en la siguiente sala temporal: '+
+          this.remoteRoomId+
+          '\nPrimero consulta mi escena con ecoblend_scene, solicita mi aprobación en EcoBlend y confirma los objetos detectados. Después crea en esa misma sala un peón de ajedrez guardián humanoide con armadura, casco, escudo y lanza mediante ecoblend_build_blueprint (mallas y partes articuladas). Pide aprobación en EcoBlend antes de crear y verifica la escena al terminar. No afirmes que es hiperrealista si es una base geométrica.';
+        try {
+          await navigator.clipboard.writeText(prompt);
+          this.setStatus('Petición de prueba con sala copiada. Pégala en ChatGPT; mantén EcoBlend abierto.');
+        } catch {
+          this.setStatus('No se pudo copiar. Utiliza Copiar ID y escribe la petición en ChatGPT.');
+        }
       }
 
       async connectRemoteMCP(){
@@ -1061,7 +1083,7 @@ import * as THREE from 'three';
             try{packet=JSON.parse(event.data);}catch{return;}
             if(packet.type==='ready'){
               this.remoteRoomId=room;
-              document.getElementById('remote-room').textContent=room;
+              document.getElementById('remote-room').value=room;
               status.textContent='Conectado (20 minutos)';
               this.setStatus('EcoBlend nube conectado. Cada operación requerirá tu aprobación.');
               return;
@@ -1085,7 +1107,7 @@ import * as THREE from 'three';
           socket.onclose=()=>{
             if(this.remoteSocket!==socket)return;
             this.remoteRoomId=null;
-            document.getElementById('remote-room').textContent='—';
+            document.getElementById('remote-room').value='—';
             status.textContent='Desconectado o caducado';
           };
         }catch(error){status.textContent='Sin conexión';this.setStatus('MCP Nube: '+error.message);}
@@ -1094,7 +1116,7 @@ import * as THREE from 'three';
       disconnectRemoteMCP(){
         if(this.remoteSocket)this.remoteSocket.close();
         this.remoteSocket=null;this.remoteRoomId=null;
-        document.getElementById('remote-room').textContent='—';
+        document.getElementById('remote-room').value='—';
         document.getElementById('remote-state').textContent='Desconectado';
       }
 
