@@ -34,3 +34,16 @@ test('permiso de edición temporal cubre las herramientas declarativas pero nunc
  assert.equal(isAuthorizedMethod('edit','mcp_execute_three_code'),false);
  assert.equal(isAuthorizedMethod('none','mcp_asset_build'),false);
 });
+
+test('la interfaz expone una autorización única revocable y una figura visible',async()=>{
+ const fs=await import('node:fs');
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const js=fs.readFileSync(new URL('../src/studio.js',import.meta.url),'utf8');
+ assert.match(html,/onclick="app\.approveRemoteSession\(\)"/);
+ assert.match(html,/onclick="app\.revokeRemoteAI\(\)"/);
+ assert.match(html,/onclick="app\.createGuardianPawn\(\)"/);
+ assert.match(js,/this\.collaboration\.grant\('edit'\)/);
+ assert.match(js,/this\.buildUniversalAsset\(plan\)/);
+ assert.match(js,/this\.collaboration\.recordFrame/);
+ assert.match(js,/this\.collaboration\.allows\(packet\.method\)/);
+});
