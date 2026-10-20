@@ -6,6 +6,7 @@ import { ASSET_VERSION } from './asset-blueprint.js';
  */
 export const PRESET_OPTIONS = [
   {id:'anthro-cat',label:'Gato antropomorfo'},
+  {id:'guardian-pawn',label:'♟ Peón guardián humanoide'},
   {id:'dragon',label:'Dragón fantástico'},
   {id:'robot',label:'Robot articulado'},
   {id:'tree',label:'Árbol'},
@@ -16,7 +17,7 @@ export const PRESET_OPTIONS = [
 export function makePresetBlueprint(id){
   if (!PRESET_OPTIONS.some(option=>option.id===id)) throw new Error('Plantilla no disponible.');
   const category = {
-    'anthro-cat':'anthropomorphic',dragon:'creature',robot:'robot',
+    'anthro-cat':'anthropomorphic','guardian-pawn':'human',dragon:'creature',robot:'robot',
     tree:'prop',chair:'prop',vehicle:'vehicle',castle:'building'
   }[id];
   const parts=[];
@@ -29,6 +30,66 @@ export function makePresetBlueprint(id){
     add('Ojo_Izq','sphere',[-span,y,z],[.12,.13,.08],c,parent);
     add('Ojo_Der','sphere',[span,y,z],[.12,.13,.08],c,parent);
   };
+
+  if(id==='guardian-pawn'){
+    // Parametric videogame starter; separate movable joints, realistic proportions
+    // but not a photogrammetric or cinematic human reconstruction.
+    const ivory='#e9e2d2',silver='#a9bac8',steel='#495e71',gold='#e6b954';
+    const skin='#c9a081',leather='#403328',dark='#182436',eyesColor='#6fd7b0';
+    add('Peana_Inferior','cylinder',[0,.12,0],[1.28,.24,1.28],dark);
+    add('Peana_Anillo','torus',[0,.25,0],[1.26,.22,1.26],gold,'root',[-90,0,0]);
+    add('Peana_Superior','cylinder',[0,.31,0],[1.14,.12,1.14],steel);
+    joint('Raiz_Cadera',[0,1.13,0]);
+    add('Pelvis_Armadura','sphere',[0,.04,0],[.88,.48,.54],steel,'Raiz_Cadera');
+    add('Cinturon','cylinder',[0,.25,0],[.84,.20,.58],leather,'Raiz_Cadera');
+    add('Hebilla','box',[0,.25,-.34],[.26,.19,.12],gold,'Raiz_Cadera');
+    joint('Torso_Pivote',[0,.35,0],'Raiz_Cadera');
+    add('Peto_Principal','capsule',[0,.54,0],[1.11,.83,.64],silver,'Torso_Pivote');
+    add('Pecho_Placa','box',[0,.67,-.35],[.66,.56,.13],ivory,'Torso_Pivote');
+    add('Pecho_Escudo','sphere',[0,.76,-.435],[.22,.28,.07],gold,'Torso_Pivote');
+    add('Espalda_Capa','box',[0,.17,.39],[1.04,1.38,.13],dark,'Torso_Pivote');
+    add('Cuello_Gargantilla','cylinder',[0,1.17,0],[.52,.19,.48],gold,'Torso_Pivote');
+    joint('Cuello_Pivote',[0,1.21,0],'Torso_Pivote');
+    add('Rostro','sphere',[0,.30,-.06],[.65,.76,.57],skin,'Cuello_Pivote');
+    add('Mandibula','sphere',[0,.01,-.23],[.45,.32,.34],skin,'Cuello_Pivote');
+    add('Nariz','cone',[0,.28,-.60],[.17,.30,.16],skin,'Cuello_Pivote',[90,0,0]);
+    add('Visera_Casco','sphere',[0,.61,.04],[.75,.47,.67],steel,'Cuello_Pivote');
+    add('Ribete_Casco','torus',[0,.50,0],[.66,.34,.63],gold,'Cuello_Pivote',[90,0,0]);
+    add('Penacho_Casco','capsule',[0,.95,.04],[.18,.48,.16],ivory,'Cuello_Pivote');
+    add('Crema_Casco','cone',[0,1.19,.04],[.32,.35,.25],gold,'Cuello_Pivote');
+    for(const side of [-1,1]){
+      const label=side<0?'Izq':'Der';
+      add('Ojo_'+label,'sphere',[side*.23,.29,-.565],[.11,.09,.075],eyesColor,'Cuello_Pivote');
+      add('Pupila_'+label,'sphere',[side*.23,.29,-.625],[.045,.055,.04],dark,'Cuello_Pivote');
+      add('Ceja_'+label,'box',[side*.23,.40,-.57],[.24,.055,.065],leather,'Cuello_Pivote');
+      add('Guarda_Casco_'+label,'box',[side*.62,.35,-.12],[.20,.60,.34],steel,'Cuello_Pivote');
+      joint('Hombro_'+label,[side*.68,1.02,0],'Torso_Pivote');
+      add('Hombrera_'+label,'sphere',[side*.09,-.04,0],[.62,.48,.63],steel,'Hombro_'+label);
+      add('Brazalete_'+label,'torus',[side*.11,-.23,0],[.36,.16,.30],gold,'Hombro_'+label',[90,0,0]);
+      add('Brazo_'+label,'capsule',[side*.08,-.42,0],[.38,.53,.39],silver,'Hombro_'+label);
+      joint('Codo_'+label,[side*.13,-.75,0],'Hombro_'+label);
+      add('Antebrazo_'+label,'capsule',[0,-.31,0],[.34,.48,.32],steel,'Codo_'+label);
+      add('Guante_'+label,'sphere',[0,-.67,0],[.33,.26,.25],leather,'Codo_'+label);
+      joint('Cadera_'+label,[side*.33,-.13,0],'Raiz_Cadera');
+      add('Muslo_'+label,'capsule',[0,-.37,0],[.44,.55,.48],silver,'Cadera_'+label);
+      add('Rodillera_'+label,'sphere',[0,-.73,-.17],[.46,.34,.29],gold,'Cadera_'+label);
+      joint('Rodilla_'+label,[0,-.77,0],'Cadera_'+label);
+      add('Espinillera_'+label,'capsule',[0,-.37,0],[.37,.53,.39],steel,'Rodilla_'+label);
+      add('Bota_'+label,'box',[0,-.81,-.17],[.47,.27,.77],leather,'Rodilla_'+label);
+      for(let i=0;i<3;i++){
+        add('Faldon_'+label+'_'+i,'box',[side*(.23+.15*i),-.16,.15+i*.04],[.14,.62,.09],ivory,'Raiz_Cadera',[side*8,0,side*5]);
+      }
+    }
+    joint('Lanza_Agarre',[0,-.71,0],'Codo_Der');
+    add('Lanza_Mango','cylinder',[0,.02,-.22],[.085,2.5,.085],leather,'Lanza_Agarre');
+    add('Lanza_Anillos','torus',[0,.74,-.22],[.22,.12,.22],gold,'Lanza_Agarre',[90,0,0]);
+    add('Lanza_Punta','cone',[0,1.52,-.22],[.31,.83,.27],silver,'Lanza_Agarre');
+    joint('Escudo_Agarre',[-.15,-.58,-.26],'Codo_Izq');
+    add('Escudo_Plateria','sphere',[-.12,-.11,-.31],[.88,1.08,.24],steel,'Escudo_Agarre');
+    add('Escudo_Frontal','sphere',[-.12,-.10,-.47],[.70,.90,.09],ivory,'Escudo_Agarre');
+    add('Escudo_Blason','sphere',[-.12,-.09,-.56],[.33,.42,.09],gold,'Escudo_Agarre');
+    return {version:ASSET_VERSION,name:'Peon_Guardian_Ecoajedrez',category,parts};
+  }
   if (id === 'anthro-cat' || id === 'robot') {
     const fur = id==='robot'?'#7b9baa':'#b88756';
     const secondary=id==='robot'?'#4b606a':'#eee0bb';
