@@ -1092,7 +1092,7 @@ import * as THREE from 'three';
         try{
           this.collaboration.grant(scope);
           this.setStatus('Permiso de '+(scope==='edit'?'edición':'observación')+
-            ' concedido durante diez minutos. Puedes detenerlo cuando quieras.');
+            ' concedido durante la sala actual (máximo 20 minutos). Puedes detenerlo cuando quieras.');
         }catch(error){this.setStatus('No se concedió permiso: '+error.message);}
       }
 
