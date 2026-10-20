@@ -14,6 +14,7 @@ import * as THREE from 'three';
     import { makePresetBlueprint, matchPreset } from './asset-presets.js';
     import { normalizeCharacterSpec, interpretCharacterDescription } from './character-spec.js';
     import { applyCharacterAppearance } from './character-appearance.js';
+    import { CollaborationSession } from './mcp-collaboration.js';
 
     class Creador3DOnlineStudio {
       constructor() {
@@ -22,6 +23,7 @@ import * as THREE from 'three';
         this.selectedObject = null;
         this.ws = null;
         this.aiActionHistory = [];
+        this.collaboration = new CollaborationSession(this);
         this.characterWorkflow = new CharacterWorkflow(this);
         this.animationEditor = new AnimationEditor(this);
         this.qualityProfile = 'low'; // Iniciar siempre en modo económico; el usuario puede aumentar la calidad.
@@ -794,6 +796,8 @@ import * as THREE from 'three';
               { name: 'mcp_capture_quad_view', description: 'Captura 4 ángulos simultáneos (Perspectiva, Frontal, Superior, Lateral) en un solo collage PNG Base64 para análisis espacial 3D de la IA.' },
               { name: 'mcp_spawn_pbr_mesh', description: 'Crea una nueva malla 3D con shader físico MeshPhysicalMaterial.' },
               { name: 'mcp_modify_object', description: 'Modifica posición, escala o material de un objeto existente.' },
+              { name: 'mcp_get_feedback', description: 'Leer correcciones del usuario.' },
+              { name: 'mcp_capture_progress', description: 'Mosaico de avances del modelo, no video continuo.' },
               { name: 'mcp_get_creation_brief', description: 'Lee el encargo de creación de personaje y los requisitos.' },
               { name: 'mcp_get_reference_image', description: 'Obtiene la imagen de referencia en JPEG para análisis visual.' },
               { name: 'mcp_animation_inspect', description: 'Inspecciona huesos, articulaciones, clips y fotogramas del modelo.' },
@@ -920,6 +924,8 @@ import * as THREE from 'three';
               else if (method === 'mcp_get_scene_graph') result = this.getSceneGraph();
               else if (method === 'mcp_capture_viewport') result = this.captureViewport();
               else if (method === 'mcp_capture_quad_view') result = this.captureQuadView();
+              else if (method === 'mcp_get_feedback') result = self.collaboration.getFeedback();
+              else if (method === 'mcp_capture_progress') result = self.collaboration.getProgress();
               else if (method === 'mcp_get_creation_brief') result = self.characterWorkflow.getBrief();
               else if (method === 'mcp_get_reference_image') result = self.characterWorkflow.getImage();
               else if (method === 'mcp_character_create') {
