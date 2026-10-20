@@ -84,7 +84,7 @@ export class CollaborationSession {
       canvas.width=360;canvas.height=225;
       canvas.getContext('2d').drawImage(source,0,0,canvas.width,canvas.height);
       this.frames.push({
-        src:canvas.toDataURL('image/jpeg',.66),
+        src:canvas.toDataURL('image/jpeg',.66), canvas,
         at:new Date().toLocaleTimeString('es-CO'),
         action:String(action).slice(0,48)
       });
