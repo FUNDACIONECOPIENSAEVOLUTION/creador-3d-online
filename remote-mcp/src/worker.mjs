@@ -52,10 +52,12 @@ function cors(request){const origin=request.headers.get('Origin');return allowed
 
 const tools = [
   { name:"ecoblend_scene", description:"Consultar grafo y geometría de la escena EcoBlend, previa aprobación en el navegador.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
+  { name:"ecoblend_progress", description:"Ver un mosaico de los últimos avances renderizados después de crear o modificar el modelo (no es vídeo en vivo).", inputSchema:{type:"object",required:["room"],properties:{room:{type:"string"}}},annotations:{readOnlyHint:true}},
+  { name:"ecoblend_feedback", description:"Leer correcciones escritas en EcoBlend por el usuario mientras la IA trabaja.",inputSchema:{type:"object",required:["room"],properties:{room:{type:"string"}}},annotations:{readOnlyHint:true}},
   { name:"ecoblend_quad_view", description:"Obtener captura de cuatro vistas 3D, previa aprobación en el navegador.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_creation_brief", description:"Leer el encargo de creación 3D actual, previa aprobación del usuario.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_reference_image", description:"Leer la imagen de referencia cargada; el navegador pedirá autorización específica.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
-  { name:"ecoblend_preset", description:"Crear una figura de catálogo mediante un comando tipado que el usuario aprobará.", inputSchema: {type:"object",required:["room","id"],properties:{room:{type:"string"},id:{type:"string",enum:["anthro-cat","dragon","robot","tree","chair","vehicle","castle"]}}}, annotations:{destructiveHint:false,readOnlyHint:false}},
+  { name:"ecoblend_preset", description:"Crear una figura de catálogo mediante un comando tipado que el usuario aprobará.", inputSchema: {type:"object",required:["room","id"],properties:{room:{type:"string"},id:{type:"string",enum:["anthro-cat","dragon","robot","tree","chair","vehicle","castle","guardian-pawn"]}}}, annotations:{destructiveHint:false,readOnlyHint:false}},
   { name:"ecoblend_validate_blueprint", description:"Validar la definición de modelo 3D sin modificar la escena.", inputSchema: {type:"object",required:["room","blueprint"],properties:{room:{type:"string"},blueprint:{type:"object"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_build_blueprint", description:"Construir modelo 3D a partir de un blueprint validado; la ventana EcoBlend debe aprobarlo.", inputSchema: {type:"object",required:["room","blueprint"],properties:{room:{type:"string"},blueprint:{type:"object"}}}, annotations:{destructiveHint:false,readOnlyHint:false}},
   { name:"ecoblend_animation_inspect", description:"Inspeccionar articulaciones y animaciones, previa aprobación.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
@@ -63,6 +65,8 @@ const tools = [
 ];
 const TOOL_MAP = {
   ecoblend_scene:"mcp_get_scene_graph",
+  ecoblend_progress:"mcp_capture_progress",
+  ecoblend_feedback:"mcp_get_feedback",
   ecoblend_quad_view:"mcp_capture_quad_view",
   ecoblend_creation_brief:"mcp_get_creation_brief",
   ecoblend_reference_image:"mcp_get_reference_image",
@@ -84,7 +88,7 @@ const ok=(id,result)=>({jsonrpc:"2.0",id,result});
 const badRoom=room=>typeof room!=="string"||!ROOM_PATTERN.test(room);
 function validArgs(name,args) {
   if(!args||typeof args!=="object"||Array.isArray(args)||badRoom(args.room))throw new Error("ID de sala inválido.");
-  if(name==="ecoblend_preset" && !["anthro-cat","dragon","robot","tree","chair","vehicle","castle"].includes(args.id))throw new Error("Plantilla desconocida.");
+  if(name==="ecoblend_preset" && !["anthro-cat","dragon","robot","tree","chair","vehicle","castle","guardian-pawn"].includes(args.id))throw new Error("Plantilla desconocida.");
   if(name==="ecoblend_animation_preset" && !["idle","attack","defend","hit","defeat"].includes(args.kind))throw new Error("Movimiento no permitido.");
   if(name.includes("blueprint") && (!args.blueprint||typeof args.blueprint!=="object"||Array.isArray(args.blueprint)
       ||!Array.isArray(args.blueprint.parts)||args.blueprint.parts.length>120))throw new Error("Plano 3D inválido.");
@@ -95,7 +99,7 @@ function simplifyArgs(name,args){
   return clean;
 }
 function mcpContent(name,result){
-  if(["ecoblend_quad_view","ecoblend_reference_image"].includes(name)){
+  if(["ecoblend_quad_view","ecoblend_reference_image","ecoblend_progress"].includes(name)){
     if(!result || !["image/jpeg","image/png"].includes(result.mimeType) ||
       typeof result.dataUrl!=="string")throw new Error("Imagen inválida.");
     const base="data:"+result.mimeType+";base64,";
@@ -165,7 +169,7 @@ export default {
     if(packet.id===undefined)return new Response(null,{status:202});
     if(packet.method==="initialize")
       return json(ok(packet.id,{protocolVersion:PROTOCOL,capabilities:{tools:{listChanged:false}},
-        serverInfo:{name:"ecoblend-remote-mcp",version:"0.1.0"},instructions:"Conecta primero la pestaña EcoBlend a MCP nube; proporciona el ID de sala al agente. Cada operación necesita aprobación visible del usuario."}));
+        serverInfo:{name:"ecoblend-remote-mcp",version:"0.1.0"},instructions:"Conecta primero la pestaña EcoBlend a MCP nube; proporciona el ID de sala al agente. Durante una sesión EcoBlend el usuario puede conceder un permiso temporal de observación o edición y detenerlo cuando quiera; la lectura de imágenes privadas sigue requiriendo consentimiento individual."}));
     if(packet.method==="ping")return json(ok(packet.id,{}));
     if(packet.method==="tools/list")return json(ok(packet.id,{tools}));
     if(packet.method!=="tools/call")return json(fault(packet.id,-32601,"Método desconocido."),404);
