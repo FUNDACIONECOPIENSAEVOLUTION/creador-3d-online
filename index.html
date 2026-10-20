@@ -30,6 +30,7 @@
       <button onclick="app.addPrimitive('box')">+ Cubo</button>
       <button onclick="app.addPrimitive('cylinder')">+ Cilindro</button>
       <button onclick="app.addPrimitive('torusknot')">+ Toroide</button>
+      <button class="mcp-btn" title="Crea inmediatamente una figura 3D editable sin IA de pago" onclick="app.createGuardianPawn()">♟ Crear peón guardián 3D</button>
       <button onclick="app.addHyperRealisticAssembly()" style="border-color:var(--accent); color:#fdba74;">+ Escultura PBR</button>
       <div class="divider"></div>
       <button id="btn-translate" class="active" onclick="app.setTransformMode('translate')">Mover (G)</button>
@@ -77,6 +78,7 @@
         Autorizar consultas de escena durante esta sala (solo lectura; no imágenes ni ediciones).
       </label>
       <span id="remote-approval-activity" role="status" aria-live="polite">Sin solicitudes pendientes.</span>
+      <button type="button" class="mcp-btn" onclick="app.createGuardianPawn()">♟ Crear el primer peón 3D ahora</button>
       <section class="mcp-agent-collab" aria-label="Colaboración IA">
         <strong>Control y visión de IA (10 min)</strong>
         <div class="mcp-agent-controls">
