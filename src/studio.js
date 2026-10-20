@@ -922,6 +922,10 @@ import * as THREE from 'three';
             };
             if (params.position !== undefined) target.position.fromArray(vector(params.position, 'position', 10000));
             if (params.scale !== undefined) target.scale.fromArray(vector(params.scale, 'scale', 1000));
+            if (params.rotationDeg !== undefined) {
+              const angles = vector(params.rotationDeg, 'rotationDeg', 3600);
+              target.rotation.set(...angles.map(THREE.MathUtils.degToRad));
+            }
             const material = Array.isArray(target.material) ? target.material[0] : target.material;
             if (params.color !== undefined || params.metalness !== undefined ||
                 params.roughness !== undefined || params.transmission !== undefined) {
@@ -1185,7 +1189,7 @@ import * as THREE from 'three';
           'mcp_get_scene_graph','mcp_capture_quad_view','mcp_get_creation_brief',
           'mcp_get_reference_image','mcp_asset_preset','mcp_asset_validate',
           'mcp_asset_build','mcp_animation_inspect','mcp_animation_preset',
-          'mcp_get_feedback','mcp_capture_progress'
+          'mcp_get_feedback','mcp_capture_progress','mcp_modify_object'
         ]);
         if(!allowed.has(packet.method)){
           socket.send(JSON.stringify({
@@ -1244,7 +1248,7 @@ import * as THREE from 'three';
           reply=data.error
             ? {type:'response',requestId:packet.requestId,error:data.error.message}
             : {type:'response',requestId:packet.requestId,result:data.result};
-          if(!data.error && ['mcp_asset_build','mcp_asset_preset','mcp_animation_preset'].includes(packet.method)){
+          if(!data.error && ['mcp_asset_build','mcp_asset_preset','mcp_animation_preset','mcp_modify_object'].includes(packet.method)){
             this.collaboration.recordFrame(packet.method);
           }
         }catch(error){
