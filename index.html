@@ -358,7 +358,9 @@
           Rechazar
         </button>
         <button id="mcp-approval-allow" type="button" class="mcp-btn"
-          onclick="app.answerRemotePermission(true)">Permitir esta operación</button>
+          onclick="app.answerRemotePermission(true)">Permitir solo esta operación</button>
+        <button id="mcp-approval-session" type="button" class="mcp-btn"
+          onclick="app.approveRemoteSession()">Autorizar trabajo de IA durante esta sala (máx. 20 min)</button>
       </div>
       <p class="mcp-approval-hint">No se autorizará nada por estar ausente. Las operaciones que no apruebes caducarán sin ejecutarse.</p>
     </div>
