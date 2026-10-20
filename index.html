@@ -72,6 +72,11 @@
         <button class="mcp-btn" type="button" onclick="app.copyRemoteRoom()" aria-label="Copiar identificador de sala">Copiar ID</button>
       </div>
       <button class="mcp-btn remote-chatgpt-copy" type="button" onclick="app.copyRemoteChatGPTPrompt()">Copiar petición para ChatGPT</button>
+      <label class="mcp-read-consent" for="remote-approve-scene">
+        <input id="remote-approve-scene" type="checkbox" />
+        Autorizar consultas de escena durante esta sala (solo lectura; no imágenes ni ediciones).
+      </label>
+      <span id="remote-approval-activity" role="status" aria-live="polite">Sin solicitudes pendientes.</span>
       <p style="font-size:10px;line-height:1.45;margin:4px 0;color:var(--text-muted);">Comparte la sala solamente con la IA que estás probando. EcoBlend solicitará tu autorización antes de revelar datos o aplicar cada modificación. No cierres esta pestaña durante el trabajo.</p>
     </div>
     <div class="mcp-container">
