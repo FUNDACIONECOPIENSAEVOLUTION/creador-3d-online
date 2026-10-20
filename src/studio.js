@@ -1063,6 +1063,31 @@ import * as THREE from 'three';
       }
 
 
+
+      grantRemoteAI(scope){
+        try{
+          this.collaboration.grant(scope);
+          this.setStatus('Permiso de '+(scope==='edit'?'edición':'observación')+
+            ' concedido durante diez minutos. Puedes detenerlo cuando quieras.');
+        }catch(error){this.setStatus('No se concedió permiso: '+error.message);}
+      }
+
+      revokeRemoteAI(){
+        this.collaboration.revoke();
+        this.setStatus('Control temporal de IA detenido. Las siguientes operaciones pedirán permiso.');
+      }
+
+      sendRemoteFeedback(){
+        try{
+          if(!this.remoteRoomId || this.remoteSocket?.readyState!==WebSocket.OPEN)
+            throw Error('Conecta primero EcoBlend MCP.');
+          const entry=document.getElementById('mcp-feedback-input');
+          this.collaboration.addFeedback(entry.value);
+          entry.value='';
+          this.setStatus('Corrección registrada para la IA. Debe leer los comentarios pendientes.');
+        }catch(error){this.setStatus('No se registró la corrección: '+error.message);}
+      }
+
       // Permisos de sesión EcoBlend. No usa la confirmación nativa bloqueable: Chrome puede descartarla
       // cuando ChatGPT y EcoBlend están abiertos en pestañas diferentes.
       clearRemotePermissionQueue(reason='Solicitud cancelada por desconexión.'){
