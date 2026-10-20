@@ -8,7 +8,7 @@ const READ = new Set([
   'mcp_get_scene_graph','mcp_capture_quad_view','mcp_get_creation_brief',
   'mcp_asset_validate','mcp_animation_inspect','mcp_get_feedback','mcp_capture_progress'
 ]);
-const WRITE = new Set(['mcp_asset_build','mcp_asset_preset','mcp_animation_preset']);
+const WRITE = new Set(['mcp_asset_build','mcp_asset_preset','mcp_animation_preset','mcp_modify_object']);
 export const isAuthorizedMethod = (scope,method) =>
   scope === 'edit' ? READ.has(method) || WRITE.has(method) :
   scope === 'observe' ? READ.has(method) : false;
