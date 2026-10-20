@@ -25,7 +25,7 @@ test('peón humanoide se convierte en escena 3D real, editable y con articulacio
 test('permiso de edición temporal cubre las herramientas declarativas pero nunca imágenes privadas',()=>{
  assert.equal(COLLAB_TTL_MS,20*60*1000);
  for(const tool of ['mcp_get_scene_graph','mcp_capture_quad_view','mcp_capture_progress',
- 'mcp_get_feedback','mcp_asset_build','mcp_asset_preset','mcp_animation_preset']){
+ 'mcp_get_feedback','mcp_modify_object','mcp_asset_build','mcp_asset_preset','mcp_animation_preset']){
   assert.equal(isAuthorizedMethod('edit',tool),true,'edit '+tool);
  }
  assert.equal(isAuthorizedMethod('observe','mcp_asset_build'),false);
