@@ -1057,7 +1057,7 @@ import * as THREE from 'three';
       }
 
 
-      // Permisos de sesión EcoBlend. No usa window.confirm(): Chrome puede descartarlo
+      // Permisos de sesión EcoBlend. No usa la confirmación nativa bloqueable: Chrome puede descartarla
       // cuando ChatGPT y EcoBlend están abiertos en pestañas diferentes.
       clearRemotePermissionQueue(reason='Solicitud cancelada por desconexión.'){
         const queue=this.remotePermissionQueue || [];
