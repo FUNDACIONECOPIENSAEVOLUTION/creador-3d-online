@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EcoBlend | Studio PBR & MCP AI Vision</title>
-  <link rel="stylesheet" href="./styles/studio.css?v=1.7.0" />
+  <link rel="stylesheet" href="./styles/studio.css?v=1.8.0" />
 
   <script type="importmap">
     {
@@ -22,7 +22,7 @@
       <div class="brand-dot"></div>
       <span>EcoBlend</span>
       <a class="repo-badge" href="https://github.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online" target="_blank">GitHub Repo</a>
-      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP EcoBlend v1.7</span>
+      <span style="color:var(--mcp-green); font-size:10px; border:1px solid var(--mcp-green); padding:1px 5px; border-radius:3px;">MCP EcoBlend v1.8</span>
     </div>
 
     <div class="toolbar">
@@ -77,6 +77,23 @@
         Autorizar consultas de escena durante esta sala (solo lectura; no imágenes ni ediciones).
       </label>
       <span id="remote-approval-activity" role="status" aria-live="polite">Sin solicitudes pendientes.</span>
+      <section class="mcp-agent-collab" aria-label="Colaboración IA">
+        <strong>Control y visión de IA (10 min)</strong>
+        <div class="mcp-agent-controls">
+          <button type="button" onclick="app.grantRemoteAI('observe')">Autorizar visión y consultas</button>
+          <button class="mcp-btn" type="button" onclick="app.grantRemoteAI('edit')">Permitir crear y animar</button>
+          <button id="mcp-collab-stop" type="button" onclick="app.revokeRemoteAI()" disabled>Detener IA</button>
+        </div>
+        <p id="mcp-collab-status" role="status" aria-live="polite">Control IA desactivado</p>
+        <p class="character-note">Visión y lectura de escena, y opcionalmente creación y animación, sin aprobar cada paso. Las imágenes de referencia subidas siguen requiriendo autorización específica. Puedes detener el control cuando quieras.</p>
+        <label for="mcp-feedback-input">¿Quieres cambiar algo mientras ves a la IA trabajar?</label>
+        <textarea id="mcp-feedback-input" rows="3" maxlength="700" placeholder="Ej.: agranda las alas, oscurece la armadura o mejora el rostro. Selecciona una pieza si la corrección es para ella."></textarea>
+        <button type="button" class="mcp-btn" onclick="app.sendRemoteFeedback()">Registrar corrección para la IA</button>
+        <small id="mcp-feedback-count" role="status" aria-live="polite">0 comentario(s) sin leer por la IA</small>
+        <strong>Avances capturados tras cada modificación</strong>
+        <img id="mcp-progress-preview" alt="Último avance visual de la escena 3D" hidden />
+        <small>La IA puede solicitar un mosaico de avances mediante MCP. No hay vídeo en vivo ni vigilancia permanente; las capturas se guardan solo en esta pestaña.</small>
+      </section>
       <p style="font-size:10px;line-height:1.45;margin:4px 0;color:var(--text-muted);">Comparte la sala solamente con la IA que estás probando. EcoBlend solicitará tu autorización antes de revelar datos o aplicar cada modificación. No cierres esta pestaña durante el trabajo.</p>
     </div>
     <div class="mcp-container">
@@ -350,6 +367,6 @@
     <span>Three.js r160 | Physical PBR | MCP Multi-Agent Ready</span>
   </footer>
 
-  <script type="module" src="./src/studio.js?v=1.7.0"></script>
+  <script type="module" src="./src/studio.js?v=1.8.0"></script>
 </body>
 </html>
