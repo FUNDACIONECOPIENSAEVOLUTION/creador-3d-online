@@ -786,7 +786,9 @@ import * as THREE from 'three';
         return {
           timestamp: new Date().toISOString(),
           camera: { position: this.camera.position.toArray(), target: this.orbit.target.toArray() },
-          objects
+          objects,
+          pendingCorrections: this.collaboration.pendingCount(),
+          tip: 'Si pendingCorrections es mayor que cero, consulta ecoblend_feedback para escuchar al usuario.'
         };
       }
 
@@ -1077,7 +1079,7 @@ import * as THREE from 'three';
           return this.setStatus('Reconecta EcoBlend MCP Nube antes de copiar la petición.');
         const prompt='Usa el complemento EcoBlend MCP en la siguiente sala temporal: '+
           this.remoteRoomId+
-          '\nPrimero consulta mi escena con ecoblend_scene, solicita mi aprobación en EcoBlend y confirma los objetos detectados. Después crea en esa misma sala un peón de ajedrez guardián humanoide con armadura, casco, escudo y lanza mediante ecoblend_build_blueprint (mallas y partes articuladas). Pide aprobación en EcoBlend antes de crear y verifica la escena al terminar. No afirmes que es hiperrealista si es una base geométrica.';
+          '\nEn EcoBlend ya puedo darte permiso de edición durante esta sala sin aprobar cada paso. Consulta ecoblend_scene, crea un peón guardián humanoide con armadura, escudo y lanza mediante ecoblend_preset (id guardian-pawn) o ecoblend_build_blueprint, y confirma que hay mallas en escena. Después solicita ecoblend_quad_view y ecoblend_progress para evaluar la figura desde varios ángulos; lee ecoblend_feedback tras cada cambio y aplica mis correcciones. Respeta la caducidad del permiso; si el modelo no se creó, no lo afirmes. Las bases geométricas no equivalen a hiperrealismo automático.';
         try {
           await navigator.clipboard.writeText(prompt);
           this.setStatus('Petición de prueba con sala copiada. Pégala en ChatGPT; mantén EcoBlend abierto.');
