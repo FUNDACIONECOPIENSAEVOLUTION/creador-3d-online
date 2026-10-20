@@ -57,6 +57,16 @@ const tools = [
   { name:"ecoblend_quad_view", description:"Obtener captura de cuatro vistas 3D, previa aprobación en el navegador.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_creation_brief", description:"Leer el encargo de creación 3D actual, previa aprobación del usuario.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_reference_image", description:"Leer la imagen de referencia cargada; el navegador pedirá autorización específica.", inputSchema: {type:"object",required:["room"],properties:{room:{type:"string"}}}, annotations:{readOnlyHint:true}},
+  { name:"ecoblend_modify_part", description:"Ajustar un objeto o articulación existente sin volver a construir toda la figura: posición, rotación, escala y material PBR. Se requiere UUID o nombre del objeto.", inputSchema:{type:"object",required:["room"],properties:{
+    room:{type:"string"},uuid:{type:"string"},name:{type:"string"},
+    position:{type:"array",items:{type:"number"},minItems:3,maxItems:3},
+    rotationDeg:{type:"array",items:{type:"number"},minItems:3,maxItems:3},
+    scale:{type:"array",items:{type:"number"},minItems:3,maxItems:3},
+    color:{type:"string",pattern:"^#[0-9a-fA-F]{6}$"},
+    metalness:{type:"number",minimum:0,maximum:1},
+    roughness:{type:"number",minimum:0,maximum:1},
+    transmission:{type:"number",minimum:0,maximum:1}
+  }}, annotations:{destructiveHint:false,readOnlyHint:false}},
   { name:"ecoblend_preset", description:"Crear una figura de catálogo mediante un comando tipado que el usuario aprobará.", inputSchema: {type:"object",required:["room","id"],properties:{room:{type:"string"},id:{type:"string",enum:["anthro-cat","dragon","robot","tree","chair","vehicle","castle","guardian-pawn"]}}}, annotations:{destructiveHint:false,readOnlyHint:false}},
   { name:"ecoblend_validate_blueprint", description:"Validar la definición de modelo 3D sin modificar la escena.", inputSchema: {type:"object",required:["room","blueprint"],properties:{room:{type:"string"},blueprint:{type:"object"}}}, annotations:{readOnlyHint:true}},
   { name:"ecoblend_build_blueprint", description:"Construir modelo 3D a partir de un blueprint validado; la ventana EcoBlend debe aprobarlo.", inputSchema: {type:"object",required:["room","blueprint"],properties:{room:{type:"string"},blueprint:{type:"object"}}}, annotations:{destructiveHint:false,readOnlyHint:false}},
@@ -70,6 +80,7 @@ const TOOL_MAP = {
   ecoblend_quad_view:"mcp_capture_quad_view",
   ecoblend_creation_brief:"mcp_get_creation_brief",
   ecoblend_reference_image:"mcp_get_reference_image",
+  ecoblend_modify_part:"mcp_modify_object",
   ecoblend_preset:"mcp_asset_preset",
   ecoblend_validate_blueprint:"mcp_asset_validate",
   ecoblend_build_blueprint:"mcp_asset_build",
@@ -88,6 +99,12 @@ const ok=(id,result)=>({jsonrpc:"2.0",id,result});
 const badRoom=room=>typeof room!=="string"||!ROOM_PATTERN.test(room);
 function validArgs(name,args) {
   if(!args||typeof args!=="object"||Array.isArray(args)||badRoom(args.room))throw new Error("ID de sala inválido.");
+  if(name==="ecoblend_modify_part"){
+    if(!([args.name,args.uuid].some(v=>typeof v==="string"&&v.trim().length>0)))
+      throw new Error('Indica el nombre o UUID de una pieza.');
+    if(!['position','scale','rotationDeg','color','metalness','roughness','transmission'].some(k=>args[k]!==undefined))
+      throw new Error('Indica al menos un ajuste.');
+  }
   if(name==="ecoblend_preset" && !["anthro-cat","dragon","robot","tree","chair","vehicle","castle","guardian-pawn"].includes(args.id))throw new Error("Plantilla desconocida.");
   if(name==="ecoblend_animation_preset" && !["idle","attack","defend","hit","defeat"].includes(args.kind))throw new Error("Movimiento no permitido.");
   if(name.includes("blueprint") && (!args.blueprint||typeof args.blueprint!=="object"||Array.isArray(args.blueprint)
