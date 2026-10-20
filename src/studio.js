@@ -1090,6 +1090,19 @@ import * as THREE from 'three';
 
 
 
+      approveRemoteSession(){
+        const pending=this.remotePermissionQueue?.[0];
+        if(pending?.packet.method==='mcp_get_reference_image'){
+          this.setStatus('La imagen privada requiere autorización individual. Usa Permitir solo esta operación.');
+          return;
+        }
+        try{
+          this.collaboration.grant('edit');
+          this.setStatus('IA autorizada para crear, revisar y animar durante esta sala (máx. 20 min).');
+          if(pending)this.answerRemotePermission(true);
+        }catch(error){this.setStatus('No se pudo autorizar la sesión: '+error.message);}
+      }
+
       grantRemoteAI(scope){
         try{
           this.collaboration.grant(scope);
