@@ -39,7 +39,7 @@ export function makePresetBlueprint(id){
     add('Peana_Inferior','cylinder',[0,.12,0],[1.28,.24,1.28],dark);
     add('Peana_Anillo','torus',[0,.25,0],[1.26,.22,1.26],gold,'root',[-90,0,0]);
     add('Peana_Superior','cylinder',[0,.31,0],[1.14,.12,1.14],steel);
-    joint('Raiz_Cadera',[0,1.13,0]);
+    joint('Raiz_Cadera',[0,2.20,0]);
     add('Pelvis_Armadura','sphere',[0,.04,0],[.88,.48,.54],steel,'Raiz_Cadera');
     add('Cinturon','cylinder',[0,.25,0],[.84,.20,.58],leather,'Raiz_Cadera');
     add('Hebilla','box',[0,.25,-.34],[.26,.19,.12],gold,'Raiz_Cadera');
