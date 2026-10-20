@@ -287,3 +287,10 @@
   .mcp-container { min-height: 230px; }
   footer { grid-column: 1; grid-row: 5; font-size: 9px; padding: 5px 8px; flex-wrap: wrap; gap: 4px; }
 }
+
+/* EcoBlend MCP cloud pairing: keep long signed room tokens and Copy action visible. */
+.panel-left { overflow-y: auto; scrollbar-gutter: stable; }
+#remote-mcp-panel { flex: 0 0 auto; overflow: visible; min-height: max-content; }
+#remote-mcp-panel > div:has(#remote-room) { align-items: flex-start !important; min-width: 0; }
+#remote-room { display: block; flex: 1 1 auto; min-width: 0; max-height: 96px; overflow-y: auto; overflow-wrap: anywhere; word-break: break-all; }
+#remote-mcp-panel button[aria-label="Copiar identificador de sala"] { flex: 0 0 auto; }
