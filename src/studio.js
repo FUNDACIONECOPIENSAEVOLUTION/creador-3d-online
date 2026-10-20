@@ -1024,6 +1024,10 @@ import * as THREE from 'three';
       }
 
 
+      // Se restaura el título original cuando se resuelven solicitudes.
+      get remoteOriginalTitle(){return this._remoteOriginalTitle || 'EcoBlend | Studio PBR & MCP AI Vision';}
+      set remoteOriginalTitle(value){this._remoteOriginalTitle=value;}
+
       async copyRemoteRoom(){
         if(!this.remoteRoomId || this.remoteSocket?.readyState !== WebSocket.OPEN)
           return this.setStatus('Reconecta EcoBlend MCP Nube: no hay sala activa.');
@@ -1052,10 +1056,151 @@ import * as THREE from 'three';
         }
       }
 
+
+      // Permisos de sesión EcoBlend. No usa window.confirm(): Chrome puede descartarlo
+      // cuando ChatGPT y EcoBlend están abiertos en pestañas diferentes.
+      clearRemotePermissionQueue(reason='Solicitud cancelada por desconexión.'){
+        const queue=this.remotePermissionQueue || [];
+        for(const pending of queue){
+          clearTimeout(pending.timeoutId);
+          if(pending.socket?.readyState===WebSocket.OPEN){
+            pending.socket.send(JSON.stringify({
+              type:'response',requestId:pending.packet.requestId,error:reason
+            }));
+          }
+        }
+        this.remotePermissionQueue=[];
+        this.renderRemotePermission();
+      }
+
+      renderRemotePermission(){
+        const panel=document.getElementById('mcp-approval-panel');
+        if(!panel)return;
+        const pending=this.remotePermissionQueue?.[0];
+        const activity=document.getElementById('remote-approval-activity');
+        if(!pending){
+          panel.hidden=true;
+          if(this.remoteOriginalTitle)document.title=this.remoteOriginalTitle;
+          if(activity)activity.textContent='Sin solicitudes pendientes.';
+          return;
+        }
+        panel.hidden=false;
+        const {packet,deadline}=pending;
+        const kinds={
+          mcp_get_scene_graph:'Consultar grafo de escena',
+          mcp_animation_inspect:'Consultar animaciones',
+          mcp_get_creation_brief:'Leer descripción del encargo',
+          mcp_get_reference_image:'Compartir imagen de referencia',
+          mcp_capture_quad_view:'Compartir captura de cuatro vistas',
+          mcp_asset_validate:'Validar un plano 3D (sin modificar)',
+          mcp_asset_build:'CONSTRUIR un nuevo modelo 3D',
+          mcp_asset_preset:'AÑADIR un modelo de catálogo',
+          mcp_animation_preset:'MODIFICAR la animación del modelo'
+        };
+        const label=kinds[packet.method] || 'Operación solicitada';
+        document.getElementById('mcp-approval-detail').textContent=label+
+          '. Si la permites, ChatGPT podrá realizar únicamente esta operación.';
+        document.getElementById('mcp-approval-tool').textContent='Herramienta: '+String(packet.tool||packet.method);
+        document.getElementById('mcp-approval-timer').textContent=
+          'Tiempo restante: '+Math.max(0,Math.ceil((deadline-Date.now())/1000))+
+          ' segundos. Cambia a esta pestaña para aprobar.';
+        if(activity)activity.textContent='⚠ '+this.remotePermissionQueue.length+' autorización(es) pendiente(s).';
+        document.title='⚠ Autoriza EcoBlend · '+(this.remoteOriginalTitle||'EcoBlend');
+        // No se fuerza enfoque ni se ejecuta ninguna acción sin clic del usuario.
+      }
+
+      queueRemotePermission(packet,socket){
+        if(socket!==this.remoteSocket || socket.readyState!==WebSocket.OPEN)return;
+        const allowed=new Set([
+          'mcp_get_scene_graph','mcp_capture_quad_view','mcp_get_creation_brief',
+          'mcp_get_reference_image','mcp_asset_preset','mcp_asset_validate',
+          'mcp_asset_build','mcp_animation_inspect','mcp_animation_preset'
+        ]);
+        if(!allowed.has(packet.method)){
+          socket.send(JSON.stringify({
+            type:'response',requestId:packet.requestId,error:'Método remoto no permitido.'
+          }));
+          return;
+        }
+        // Es una autorización expresa y temporal, únicamente para lectura de la escena.
+        const autoScene=packet.method==='mcp_get_scene_graph' &&
+          document.getElementById('remote-approve-scene')?.checked === true;
+        if(autoScene){
+          this.runRemotePermission(packet,socket);
+          document.getElementById('remote-approval-activity').textContent=
+            'Consulta de escena autorizada por configuración temporal de esta sala.';
+          return;
+        }
+        if(!this.remotePermissionQueue)this.remotePermissionQueue=[];
+        if(this.remotePermissionQueue.length>=3){
+          socket.send(JSON.stringify({
+            type:'response',requestId:packet.requestId,error:'Demasiadas solicitudes: vuelve a intentarlo.'
+          }));
+          return;
+        }
+        if(this.remotePermissionQueue.some(p=>p.packet.requestId===packet.requestId))return;
+        const pending={packet,socket,deadline:Date.now()+31000};
+        pending.timeoutId=setTimeout(()=>{
+          const queue=this.remotePermissionQueue||[];
+          const i=queue.indexOf(pending);
+          if(i<0)return;
+          queue.splice(i,1);
+          if(socket.readyState===WebSocket.OPEN){
+            socket.send(JSON.stringify({
+              type:'response',requestId:packet.requestId,
+              error:'La solicitud caducó sin respuesta. El usuario no la rechazó. Vuelve a solicitarla.'
+            }));
+          }
+          this.renderRemotePermission();
+        },31000);
+        this.remotePermissionQueue.push(pending);
+        this.renderRemotePermission();
+      }
+
+      runRemotePermission(packet,socket){
+        if(socket!==this.remoteSocket || socket.readyState!==WebSocket.OPEN)return;
+        let reply;
+        try{
+          const data=window.MCP_BRIDGE.handleJsonRpc({
+            jsonrpc:'2.0',id:packet.requestId,method:packet.method,params:packet.params||{}
+          });
+          reply=data.error
+            ? {type:'response',requestId:packet.requestId,error:data.error.message}
+            : {type:'response',requestId:packet.requestId,result:data.result};
+        }catch(error){
+          reply={type:'response',requestId:packet.requestId,error:String(error.message).slice(0,200)};
+        }
+        if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(reply));
+      }
+
+      answerRemotePermission(approved){
+        const pending=this.remotePermissionQueue?.shift();
+        if(!pending)return;
+        clearTimeout(pending.timeoutId);
+        if(Date.now()>=pending.deadline){
+          if(pending.socket.readyState===WebSocket.OPEN){
+            pending.socket.send(JSON.stringify({
+              type:'response',requestId:pending.packet.requestId,
+              error:'La solicitud caducó sin aprobación. Vuelve a intentarlo.'
+            }));
+          }
+        }else if(approved){
+          this.runRemotePermission(pending.packet,pending.socket);
+        }else if(pending.socket.readyState===WebSocket.OPEN){
+          pending.socket.send(JSON.stringify({
+            type:'response',requestId:pending.packet.requestId,
+            error:'Operación rechazada expresamente por el usuario en EcoBlend.'
+          }));
+        }
+        this.renderRemotePermission();
+      }
+
       async connectRemoteMCP(){
         const status=document.getElementById('remote-state');
         try{
+          this.clearRemotePermissionQueue();
           if(this.remoteSocket)this.remoteSocket.close();
+          this.remoteOriginalTitle=document.title.replace(/^⚠ Autoriza EcoBlend · /,'');
           const addr=new URL(document.getElementById('remote-mcp-base').value.trim());
           if(addr.protocol!=='https:'||addr.username||addr.password||addr.search||addr.hash)throw Error('Introduce una dirección base HTTPS confiable, sin parámetros.');
           const keyField=document.getElementById('remote-pair-key');
@@ -1084,28 +1229,20 @@ import * as THREE from 'three';
             if(packet.type==='ready'){
               this.remoteRoomId=room;
               document.getElementById('remote-room').value=room;
+              document.getElementById('remote-approve-scene').checked=false;
               status.textContent='Conectado (20 minutos)';
-              this.setStatus('EcoBlend nube conectado. Cada operación requerirá tu aprobación.');
+              this.setStatus('EcoBlend nube conectado. Permisos visibles dentro del editor.');
               return;
             }
-            if(packet.type!=='request'||typeof packet.requestId!=='string')return;
-            const readable=['mcp_get_reference_image','mcp_capture_quad_view'].includes(packet.method);
-            const writes=['mcp_asset_build','mcp_asset_preset','mcp_animation_preset'].includes(packet.method);
-            const action=readable?'Compartir imagen':writes?'Modificar escena':'Consultar escena';
-            const approved=window.confirm('EcoBlend MCP Nube\n'+action+': '+String(packet.tool||packet.method).slice(0,80)+'\n\n¿Autorizas esta operación?');
-            let result;
-            if(!approved)result={type:'response',requestId:packet.requestId,error:'El usuario rechazó la operación.'};
-            else{
-              try{
-                const data=window.MCP_BRIDGE.handleJsonRpc({jsonrpc:'2.0',id:packet.requestId,method:packet.method,params:packet.params||{}});
-                result=data.error?{type:'response',requestId:packet.requestId,error:data.error.message}:{type:'response',requestId:packet.requestId,result:data.result};
-              }catch(error){result={type:'response',requestId:packet.requestId,error:String(error.message).slice(0,200)};}
+            if(packet.type==='request' && typeof packet.requestId==='string'){
+              this.queueRemotePermission(packet,socket);
             }
-            if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(result));
           };
           socket.onerror=()=>{status.textContent='Error de conexión';};
           socket.onclose=()=>{
             if(this.remoteSocket!==socket)return;
+            this.clearRemotePermissionQueue('Sala desconectada o caducada.');
+            document.getElementById('remote-approve-scene').checked=false;
             this.remoteRoomId=null;
             document.getElementById('remote-room').value='—';
             status.textContent='Desconectado o caducado';
@@ -1114,6 +1251,8 @@ import * as THREE from 'three';
       }
 
       disconnectRemoteMCP(){
+        this.clearRemotePermissionQueue();
+        document.getElementById('remote-approve-scene').checked=false;
         if(this.remoteSocket)this.remoteSocket.close();
         this.remoteSocket=null;this.remoteRoomId=null;
         document.getElementById('remote-room').value='—';
