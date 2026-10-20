@@ -294,3 +294,58 @@
 #remote-mcp-panel > div:has(#remote-room) { align-items: flex-start !important; min-width: 0; }
 #remote-room { display: block; flex: 1 1 auto; min-width: 0; max-height: 96px; overflow-y: auto; overflow-wrap: anywhere; word-break: break-all; }
 #remote-mcp-panel button[aria-label="Copiar identificador de sala"] { flex: 0 0 auto; }
+
+/* v1.6 – Permitir desplazamiento real de todo el panel izquierdo.
+   La versión anterior mezclaba flex:1 + overflow:hidden en los paneles MCP. */
+@media (min-width: 721px) {
+  .panel-left {
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    overscroll-behavior-y: contain;
+  }
+  .panel-left > .section-title { flex: 0 0 auto; }
+  .panel-left > #outliner { flex: 0 0 145px; height: auto; min-height: 100px; }
+  .panel-left > .mcp-container {
+    flex: 0 0 auto;
+    overflow: visible;
+    min-height: auto;
+  }
+  .panel-left textarea.mcp-io { flex: 0 0 auto; min-height: 130px; height: 150px; }
+}
+#remote-mcp-panel .remote-room-control {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+}
+#remote-mcp-panel input#remote-room {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
+  height: 30px;
+  background: #0f0f12;
+  border: 1px solid #52525b;
+  border-radius: 4px;
+  color: #a7f3d0;
+  font: 11px Consolas, monospace;
+  padding: 5px;
+  user-select: text;
+}
+#remote-mcp-panel .remote-room-control button {
+  flex: 0 0 auto;
+}
+#remote-mcp-panel .remote-chatgpt-copy {
+  display: block;
+  width: 100%;
+  min-height: 33px;
+  white-space: normal;
+}
+@media (max-width: 720px) {
+  .panel-left { overflow-y: auto; overflow-x: hidden; }
+  .panel-left > .mcp-container { flex: 0 0 auto; overflow: visible; }
+  .panel-left textarea.mcp-io { flex: 0 0 auto; min-height: 130px; }
+}
