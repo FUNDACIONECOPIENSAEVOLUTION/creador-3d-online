@@ -178,6 +178,7 @@ export function makePresetBlueprint(id){
 export function matchPreset(description){
   if(typeof description!=='string'||description.length>1800)throw new Error('Descripción inválida.');
   const text=description.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(/\b(peon|pawn|guardian de ajedrez|guerrero de ajedrez|soldado de ajedrez)\b/.test(text))return 'guardian-pawn';
   if(/\b(gato|felino|gata|cat)\b/.test(text)&&/\b(antropomorfo|humanoide|guerrero|bipedo)\b/.test(text))return 'anthro-cat';
   if(/\b(dragon|draconico)\b/.test(text))return 'dragon';
   if(/\b(robot|androide|mecanico)\b/.test(text))return 'robot';
