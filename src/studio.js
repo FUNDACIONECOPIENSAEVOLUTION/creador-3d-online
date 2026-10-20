@@ -581,6 +581,30 @@ import * as THREE from 'three';
           return {error: error.message};
         }
       }
+      createGuardianPawn() {
+        try {
+          const plan = makePresetBlueprint('guardian-pawn');
+          const result = this.buildUniversalAsset(plan);
+          if (result?.error) throw Error(result.error);
+          const selected = this.selectedObject;
+          if (selected) {
+            const bounds = new THREE.Box3().setFromObject(selected);
+            const center = bounds.getCenter(new THREE.Vector3());
+            const size = bounds.getSize(new THREE.Vector3());
+            const d = Math.max(5.8,Math.max(size.x,size.y,size.z)*2.05);
+            this.orbit.target.copy(center);
+            this.camera.position.set(center.x+d*.55,center.y+d*.31,center.z+d*.86);
+            this.orbit.update();
+          }
+          this.collaboration.recordFrame('Peón guardián creado');
+          this.setStatus('♟ Peón guardián 3D creado: '+result.parts+' partes editables. Exporta GLB para probar.');
+          return result;
+        } catch(error) {
+          this.setStatus('Error al crear el peón 3D: '+error.message);
+          return {error:error.message};
+        }
+      }
+
       createAssetPreset() {
         try { return this.buildUniversalAsset(makePresetBlueprint(document.getElementById('asset-preset').value)); }
         catch (error) {this.setStatus('Plantilla: '+error.message);return {error:error.message};}
