@@ -91,6 +91,7 @@ const tools = [
   { name:"ecoblend_animation_preset", description:"Aplicar animación básica al modelo seleccionado previa confirmación.", inputSchema: {type:"object",required:["room","kind"],properties:{room:{type:"string"},kind:{type:"string",enum:["idle","attack","defend","hit","defeat"]}}}, annotations:{destructiveHint:false,readOnlyHint:false}}
 ];
 const TOOL_MAP = {
+  ecoblend_blueprint_format:"mcp_asset_blueprint_format",
   ecoblend_scene:"mcp_get_scene_graph",
   ecoblend_progress:"mcp_capture_progress",
   ecoblend_feedback:"mcp_get_feedback",
