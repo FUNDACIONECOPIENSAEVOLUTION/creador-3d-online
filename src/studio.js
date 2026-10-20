@@ -1205,6 +1205,9 @@ import * as THREE from 'three';
           reply=data.error
             ? {type:'response',requestId:packet.requestId,error:data.error.message}
             : {type:'response',requestId:packet.requestId,result:data.result};
+          if(!data.error && ['mcp_asset_build','mcp_asset_preset','mcp_animation_preset'].includes(packet.method)){
+            this.collaboration.recordFrame(packet.method);
+          }
         }catch(error){
           reply={type:'response',requestId:packet.requestId,error:String(error.message).slice(0,200)};
         }
@@ -1238,6 +1241,7 @@ import * as THREE from 'three';
         try{
           this.clearRemotePermissionQueue();
           if(this.remoteSocket)this.remoteSocket.close();
+          this.collaboration.revoke();
           this.remoteOriginalTitle=document.title.replace(/^⚠ Autoriza EcoBlend · /,'');
           const addr=new URL(document.getElementById('remote-mcp-base').value.trim());
           if(addr.protocol!=='https:'||addr.username||addr.password||addr.search||addr.hash)throw Error('Introduce una dirección base HTTPS confiable, sin parámetros.');
@@ -1266,6 +1270,7 @@ import * as THREE from 'three';
             try{packet=JSON.parse(event.data);}catch{return;}
             if(packet.type==='ready'){
               this.remoteRoomId=room;
+              this.collaboration.connected(room);
               document.getElementById('remote-room').value=room;
               document.getElementById('remote-approve-scene').checked=false;
               status.textContent='Conectado (20 minutos)';
@@ -1280,6 +1285,7 @@ import * as THREE from 'three';
           socket.onclose=()=>{
             if(this.remoteSocket!==socket)return;
             this.clearRemotePermissionQueue('Sala desconectada o caducada.');
+            this.collaboration.revoke();
             document.getElementById('remote-approve-scene').checked=false;
             this.remoteRoomId=null;
             document.getElementById('remote-room').value='—';
@@ -1290,6 +1296,7 @@ import * as THREE from 'three';
 
       disconnectRemoteMCP(){
         this.clearRemotePermissionQueue();
+        this.collaboration.revoke();
         document.getElementById('remote-approve-scene').checked=false;
         if(this.remoteSocket)this.remoteSocket.close();
         this.remoteSocket=null;this.remoteRoomId=null;
