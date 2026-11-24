@@ -40,7 +40,7 @@ def main():
     if args.action=="selftest":
         from architecture_v05 import DEMO
         r=brief(DEMO,"campestre");assert len(r)==5 and r[0]["id"]=="F01"
-        assert abs(next(x for x in r if x["id"]=="F03")["openings_image_left_m"][0]-2.2)<1e-8
+        assert abs(next(x for x in r if x["id"]=="F03")["openings_image_left_m"][0]["offset"]-2.2)<1e-8
         assert "<svg" in plan_svg(DEMO)
         try:proposal({"spec":DEMO,"dimension_status":{},"notes":""})
         except ValueError:pass
