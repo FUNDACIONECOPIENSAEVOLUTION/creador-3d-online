@@ -1,6 +1,6 @@
 {
-  "id": "test001",
-  "engine": "blender",
+  "id": "freecad-test-v03-001",
+  "engine": "freecad",
   "action": "demo",
-  "size": 2
+  "size": 35
 }
