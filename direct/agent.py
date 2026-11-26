@@ -1,6 +1,6 @@
 """EcoBlend Direct: local, allowlisted CLI. No network listener or remote code."""
 import argparse, json, os, pathlib, shutil, subprocess, sys, math
-ROOT=pathlib.Path.home()/"EcoBlendDirect"
+ROOT=pathlib.Path(os.environ.get("ECOBLEND_PROJECTS",str(pathlib.Path.home()/"EcoBlendDirect")))
 def locate(name):
     env=os.environ.get("ECOBLEND_"+name.upper())
     if env and pathlib.Path(env).is_file(): return env
