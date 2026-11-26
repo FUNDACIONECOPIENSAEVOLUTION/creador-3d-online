@@ -1,14 +1,14 @@
 """EcoBlend Direct v0.3: local panel and public, bounded job inbox.
 Remote jobs always require explicit local approval. No remote code execution.
 """
-import html, json, pathlib, re, secrets, subprocess, sys, threading, time, urllib.request, webbrowser
+import os, html, json, pathlib, re, secrets, subprocess, sys, threading, time, urllib.request, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 ROOT=pathlib.Path(__file__).resolve().parent
 TOKEN=secrets.token_urlsafe(32)
 LOCK=threading.RLock()
 STATE={"status":"Listo","output":"","pending":None,"until":0,"inbox":"Desconectado"}
-HISTORY=ROOT.parent/"logs"/"direct-history.jsonl"
+HISTORY=pathlib.Path(os.environ.get("ECOBLEND_LOGS",str(ROOT.parent/"logs")))/"direct-history.jsonl"
 HISTORY.parent.mkdir(exist_ok=True)
 URL="https://raw.githubusercontent.com/FUNDACIONECOPIENSAEVOLUTION/creador-3d-online/feature/direct-engine/direct/job.json"
 def seen(jid):
