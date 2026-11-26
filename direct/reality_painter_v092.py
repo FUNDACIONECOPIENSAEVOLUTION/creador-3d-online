@@ -1,7 +1,7 @@
 """Local Reality Painter: select prepared photographs, rectify and blend, then export.
 Run on localhost only. No image upload to external services.
 """
-import argparse, pathlib, json, re, tempfile, subprocess, sys, math
+import os, argparse, pathlib, json, re, tempfile, subprocess, sys, math
 from PIL import Image, ImageOps, ImageChops
 from reality_v092 import validate, ROOT, surface_ids
 Image.MAX_IMAGE_PIXELS=30_000_000
@@ -53,7 +53,7 @@ def run(project, manifest):
                 ratio=rect[2]/rect[3]
             if mode!='tile' and side.startswith('C01'):
                 oh=spec['roof']['overhang'];ratio=(w+2*oh)/(d+2*oh)
-            size=(max(64,round(1536*min(1,ratio))),max(64,round(1536*min(1,1/ratio))))
+            size=(max(64,round(int(os.environ.get('ECOBLEND_TEXTURE_PX','1536'))*min(1,ratio))),max(64,round(int(os.environ.get('ECOBLEND_TEXTURE_PX','1536'))*min(1,1/ratio))))
             acc=None;total=0
             for ref in refs:
                 f=(manifest.parent/ref["image"]).resolve()
