@@ -1,9 +1,9 @@
 """EcoBlend Architecture 0.5: local rectangular shell, explicit dimensions in metres.
 No network, no automatic plan inference. Original inputs are not modified.
 """
-import argparse, json, math, pathlib, subprocess, sys, tempfile, html, re
+import os, argparse, json, math, pathlib, subprocess, sys, tempfile, html, re
 from agent_v04 import locate
-ROOT=pathlib.Path(__file__).resolve().parent.parent/"projects"
+ROOT=pathlib.Path(os.environ.get("ECOBLEND_PROJECTS",str(pathlib.Path(__file__).resolve().parent.parent/"projects")))
 DEMO={"width":8,"depth":6,"height":2.8,"wall":0.2,"openings":[{"side":"F01","offset":3,"width":1,"bottom":0,"height":2.1},{"side":"F03","offset":2,"width":1.4,"bottom":1,"height":1.1}]}
 def number(v,lo,hi):
     if type(v) not in (int,float) or not math.isfinite(v) or not lo<=v<=hi: raise ValueError("Dimension fuera de rango")
@@ -149,7 +149,7 @@ for p in {pieces!r}:
 bpy.ops.wm.save_as_mainfile(filepath=str(out/'demo.blend'))
 bpy.ops.export_scene.gltf(filepath=str(out/'demo.glb'),export_format='GLB',export_extras=True)
 """
-            cmd=[exe,"--background","--factory-startup","--disable-autoexec","--python-exit-code","1","--python"]; expected=["demo.blend","demo.glb"]
+            cmd=[exe,"--background","--threads",os.environ.get("ECOBLEND_THREADS","0"),"--factory-startup","--disable-autoexec","--python-exit-code","1","--python"]; expected=["demo.blend","demo.glb"]
         else:
             script=f"""import FreeCAD as App, Part, pathlib
 out=pathlib.Path({str(out)!r})
