@@ -1,10 +1,10 @@
 """EcoBlend Reality v0.8. Local photo/material mapping for v0.5 rectangular architecture.
 Uses explicit world-space UV projection, never uploads images. Creates a new revision.
 """
-import argparse, json, math, pathlib, tempfile, subprocess, sys, shutil, re, struct, zlib
+import os, argparse, json, math, pathlib, tempfile, subprocess, sys, shutil, re, struct, zlib
 from agent_v04 import locate
 from architecture_plus_v092 import build
-ROOT=pathlib.Path(__file__).resolve().parent.parent/"projects"
+ROOT=pathlib.Path(os.environ.get("ECOBLEND_PROJECTS",str(pathlib.Path(__file__).resolve().parent.parent/"projects")))
 IDS=("F01","F02","F03","F04","P01")
 def uv(side,x,y,z,w,d,h,t,repeat=None):
     if side=="P01": return (x/(repeat or w),y/(repeat or d))
@@ -182,7 +182,7 @@ bpy.ops.export_scene.gltf(filepath=str(out/'demo.glb'),export_format='GLB',expor
     exe=locate("blender")
     if not exe: raise SystemExit("Blender no encontrado")
     with (out/"reality.log").open("w",encoding="utf-8") as log:
-        proc=subprocess.run([exe,"--background","--factory-startup","--disable-autoexec","--python-exit-code","1","--python",str(out/"reality_build.py")],cwd=out,stdout=log,stderr=subprocess.STDOUT,timeout=240)
+        proc=subprocess.run([exe,"--background","--threads",os.environ.get("ECOBLEND_THREADS","0"),"--factory-startup","--disable-autoexec","--python-exit-code","1","--python",str(out/"reality_build.py")],cwd=out,stdout=log,stderr=subprocess.STDOUT,timeout=240)
     ok=proc.returncode==0 and all((out/f).is_file() and (out/f).stat().st_size>0 for f in ("demo.blend","demo.glb","applied.json"))
     glb=out/"demo.glb"
     audit={}
