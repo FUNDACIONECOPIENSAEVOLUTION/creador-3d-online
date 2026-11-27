@@ -1,8 +1,8 @@
 {
-  "serial": 7,
-  "version": "0.9.24",
-  "commit": "4851fe1cf40d4b5f760c1093322c349445160f52",
-  "launcher": "studio_launcher_portable_v0924.py",
+  "serial": 8,
+  "version": "0.9.25",
+  "commit": "299b1c36125007a46344ab4885032bb863b14158",
+  "launcher": "studio_launcher_portable_v0925.py",
   "files": {
     "gallery_v0916.py": "deaa99104c9b01a6e605a6c2ed45ba9f4586c1fb6c1b32843a22de607f00b16f",
     "roof_mount_v0914.py": "5e510465760f7bdaa3bf842e69e667a5c00c0b82730a5d7cbe3709715202a45e",
@@ -13,9 +13,9 @@
     "roof_cut_trace_v0920.py": "8b143f882b01b8717ebade4b301a85df57e48f65924c0acb008564fb0128eb39",
     "roof_polygon_frame_v0921.py": "5716bf3457aa8be17a6c04bbaa8bca8f02559eadf05c23f4e3a523a66a91fe14",
     "roof_frame_v0913.py": "76ee56d2f7479409fbe445d18e3a7e00f177536bf13b951fad2371395c73b7a2",
-    "studio_launcher_portable_v0924.py": "aad1ad38cb6cc82841faf5fc34bf11b9a6f48ba7d6279064d9ba4fb847c557be",
-    "panel_v0924.py": "3ab580406ad9723194acf61ccd5e85c2d5d2085741fad37d8d684a1ee4494bc0",
-    "cad_assembly_v0924.py": "a7eef8ccf68be3fb3444b0773eff9e76f9ef63e0d9351a97af4a89f97244e40f"
+    "cad_assembly_v0924.py": "a7eef8ccf68be3fb3444b0773eff9e76f9ef63e0d9351a97af4a89f97244e40f",
+    "studio_launcher_portable_v0925.py": "b648a989ec384eecf2ad7354b005e74fa638ca0fab6057f27095837eed040a6d",
+    "panel_v0925.py": "b82d74d0333c6c717bf1147b5b9b7d697a9de8fcb409928a0871b67bd5d263ae"
   },
   "tests": [
     "roof_engine_v099.py",
@@ -24,6 +24,6 @@
     "roof_colonial_v0920.py",
     "roof_polygon_frame_v0921.py",
     "cad_assembly_v0924.py",
-    "panel_v0924.py"
+    "panel_v0925.py"
   ]
 }
