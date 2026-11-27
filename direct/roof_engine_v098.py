@@ -114,6 +114,13 @@ for r in data:
             obj=doc.addObject('Part::Feature',q['id']);obj.Shape=shape;group.addObject(obj)
             obj.addProperty('App::PropertyLength','CutLength','EcoBlend');obj.CutLength=q['length']*1000
             objects.append(obj)
+table=doc.addObject('Spreadsheet::Sheet','Quantities')
+table.Label='Cuantificacion preliminar'
+for i,h in enumerate(['Cubierta','Area inclinada m2','Piezas','Tejas comerciales','Segmentos correas','Correas m']):
+    table.set(chr(65+i)+'1',h)
+for row,r in enumerate(data,2):
+    for i,v in enumerate([r['id'],round(r['area_slope'],3),len(r['sheets']),len(r['stock_bins']),len(r['bars']),round(r['bar_m'],3)]):
+        table.set(chr(65+i)+str(row),str(v))
 doc.recompute();doc.saveAs(str(out/'demo.FCStd'));Part.export(objects,str(out/'demo.step'))
 """
                 cmd=[exe];expected=["demo.FCStd","demo.step"]
