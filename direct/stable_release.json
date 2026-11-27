@@ -1,8 +1,8 @@
 {
-  "serial": 5,
-  "version": "0.9.22",
-  "commit": "b671be3ad9d33f750b5a08ed211bdbf2cc6d187c",
-  "launcher": "studio_launcher_portable_v0922.py",
+  "serial": 6,
+  "version": "0.9.23",
+  "commit": "7207586d61644341c8c5b338ed6a88ba1fa88fef",
+  "launcher": "studio_launcher_portable_v0923.py",
   "files": {
     "gallery_v0916.py": "deaa99104c9b01a6e605a6c2ed45ba9f4586c1fb6c1b32843a22de607f00b16f",
     "roof_mount_v0914.py": "5e510465760f7bdaa3bf842e69e667a5c00c0b82730a5d7cbe3709715202a45e",
@@ -11,10 +11,10 @@
     "roof_engine_v099.py": "767cca6b7c4a2d404f8ab5b2baec104805fcf8c25ea0244648b21562a547156f",
     "roof_colonial_v0920.py": "acf86b52632416bfa43cd0ca0c6dd0421a21b3c2d71f4d0f6fee320eddbe0a0c",
     "roof_cut_trace_v0920.py": "8b143f882b01b8717ebade4b301a85df57e48f65924c0acb008564fb0128eb39",
-    "studio_launcher_portable_v0922.py": "7186b7df80a86398cf9b0c08a86be49562040122bfd1bf9ff31800d541eb4f53",
-    "panel_v0922.py": "96f80ba8f5163d3692324029642f3975ac85e53885cefc29798ecfb7be78e1b4",
     "roof_polygon_frame_v0921.py": "5716bf3457aa8be17a6c04bbaa8bca8f02559eadf05c23f4e3a523a66a91fe14",
-    "roof_frame_v0913.py": "76ee56d2f7479409fbe445d18e3a7e00f177536bf13b951fad2371395c73b7a2"
+    "roof_frame_v0913.py": "76ee56d2f7479409fbe445d18e3a7e00f177536bf13b951fad2371395c73b7a2",
+    "studio_launcher_portable_v0923.py": "9e3e1ddabd0a65f1a3beebfff504d49619f67b69c8dba34c8a41b173cda9c782",
+    "panel_v0923.py": "27568e9204e716fd51d9b2ba09a759c16856f66643905454aca561d4eb8f2cb8"
   },
   "tests": [
     "roof_engine_v099.py",
@@ -22,6 +22,6 @@
     "roof_cut_trace_v0920.py",
     "roof_colonial_v0920.py",
     "roof_polygon_frame_v0921.py",
-    "panel_v0922.py"
+    "panel_v0923.py"
   ]
 }
