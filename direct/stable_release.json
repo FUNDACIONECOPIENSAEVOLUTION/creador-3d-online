@@ -1,22 +1,22 @@
 {
-  "serial": 1,
-  "version": "0.9.17",
-  "commit": "6cf86882d215d1ab3f513578704a27458a29bbb7",
+  "serial": 2,
+  "version": "0.9.18",
+  "commit": "0bdb501ae1bd24ff21a2c795a94d4ac1722b7b47",
   "launcher": "studio_launcher_portable_v0916.py",
   "files": {
     "studio_launcher_portable_v0916.py": "ecfd83247ad804079a0b88039434d52743ba3d0e22e8e3b037ae0f9551d4e59f",
     "gallery_v0916.py": "deaa99104c9b01a6e605a6c2ed45ba9f4586c1fb6c1b32843a22de607f00b16f",
     "panel_v0910.py": "7bf135b54712b2a3857031f7704199c688ba297e6db556eb8a8dfa9c0d902ad2",
-    "roof_colonial_v0917.py": "60dd3c7e5d7b7e66541eb587352925236fe26b942bea7675933095e4dd633443",
     "roof_mount_v0914.py": "5e510465760f7bdaa3bf842e69e667a5c00c0b82730a5d7cbe3709715202a45e",
     "roof_assembly_v0912.py": "f5671d02eaed2d8f98dead5c367d114c55adb648f7ba9f9878bceaa066f086f3",
     "roof_stock_v0910.py": "feabd940363c0f93dfdc338cc335a58c433f655e712a11f47598c1e2e97a53ce",
-    "roof_engine_v099.py": "767cca6b7c4a2d404f8ab5b2baec104805fcf8c25ea0244648b21562a547156f"
+    "roof_engine_v099.py": "767cca6b7c4a2d404f8ab5b2baec104805fcf8c25ea0244648b21562a547156f",
+    "roof_colonial_v0918.py": "8a4d78bc24f4d6f20261836c6cece842c1fe77a3494bce6f1c8b448f208dd68a"
   },
   "tests": [
     "roof_engine_v099.py",
     "roof_stock_v0910.py",
-    "roof_colonial_v0917.py",
+    "roof_colonial_v0918.py",
     "panel_v0910.py"
   ]
 }
