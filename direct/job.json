@@ -1,6 +1,61 @@
 {
-  "id": "freecad-test-v03-001",
-  "engine": "freecad",
-  "action": "demo",
-  "size": 35
+  "id": "bridge-polygon-check-20261127-01",
+  "action": "polygon_frame",
+  "engine": "both",
+  "spec": {
+    "facets": [
+      {
+        "id": "TEST_A",
+        "polygon": [
+          [
+            0,
+            0
+          ],
+          [
+            4,
+            0
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "gradient": [
+          0,
+          0.35
+        ],
+        "z0": 0
+      },
+      {
+        "id": "TEST_B",
+        "polygon": [
+          [
+            0,
+            2
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            0,
+            4
+          ]
+        ],
+        "gradient": [
+          0,
+          -0.35
+        ],
+        "z0": 1.4
+      }
+    ]
+  }
 }
